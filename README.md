@@ -1,2 +1,2 @@
 # purescript-sentry
-Purescript binding to sentry
+Purescript bindings to Sentry.
