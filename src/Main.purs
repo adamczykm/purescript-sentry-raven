@@ -5,6 +5,8 @@ import Prelude
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2, EffFn3, runEffFn3, EffFn1, runEffFn1)
+import Node.Process (PROCESS, lookupEnv)
+import Data.Maybe (maybe)
 import Debug.Trace (traceAnyA)
 import Data.Foreign (Foreign)
 import Simple.JSON (class WriteForeign, write)
@@ -103,10 +105,10 @@ recordBreadcrumb :: ∀ h ctx eff r. WriteForeign (Breadcrumb r) => Raven h ctx 
 recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
 
 
-main :: forall e. Eff (console :: CONSOLE | e) Unit
+main :: forall e. Eff (console :: CONSOLE, process :: PROCESS | e) Unit
 main = do
-
-  ret ← withRaven (Dsn "")
+  dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN"
+  ret ← withRaven dsn
                   {x: "Some context", t: "part of ctx"} ( \r -> do
     recordBreadcrumb r {category: "test", level:"debug", message:"st brdcrmb"}
     captureMessage r "st message2"
