@@ -42,11 +42,11 @@ foreign import throw ∷ ∀ eff. Eff eff Int
 
 main :: forall e. Eff (console :: CONSOLE, raven ∷ RAVEN | e) Unit
 main = do
-  r ← raven (Dsn "https://179ded71931e4a58b05b892dd837852e@sentry.io/1191644") {x: "Some context"}
+  r ← raven (Dsn "https://179ded71931e4a58b05b892dd837852e@sentry.io/1191644") {x: "Some context", breadcrumbs: [{level: "error", category: "test", message: "test message"}]}
 
   context ← getContext r
 
-  setContext r {x: "New context"}
+  -- setContext r {x: "New context", }
 
   traceAnyA "Old context:"
   traceAnyA context
@@ -58,8 +58,9 @@ main = do
   traceAnyA "Old context:"
   traceAnyA context
 
-  captureMessage r ("TEST MESSAGE")
+  captureMessage r ("MESSAGE")
   -- -- x ← y r
+
   -- x ← inContext r throw
   -- logShow x
   -- traceAnyA x
