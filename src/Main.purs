@@ -35,8 +35,8 @@ getContext r = runEffFn1 getContextImpl r
 setContext ∷ ∀ ctx eff. Raven ctx → ctx → Eff (raven ∷ RAVEN | eff) Unit
 setContext r ctx = runEffFn2 setContextImpl r ctx
 
-inContext ∷ ∀ a eff. Raven → Eff (raven ∷ RAVEN | eff) a → Eff (raven ∷ RAVEN | eff) a
-inContext r eff = runEffFn2 inContextImpl r eff
+-- inContext ∷ ∀ a eff. Raven → Eff (raven ∷ RAVEN | eff) a → Eff (raven ∷ RAVEN | eff) a
+-- inContext r eff = runEffFn2 inContextImpl r eff
 
 foreign import throw ∷ ∀ eff. Eff eff Int
 
