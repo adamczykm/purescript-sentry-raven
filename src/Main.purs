@@ -9,7 +9,7 @@ import Node.Process (PROCESS, lookupEnv)
 import Data.Maybe (maybe)
 import Debug.Trace (traceAnyA)
 import Data.Foreign (Foreign)
-import Simple.JSON (class WriteForeign, write)
+import Simple.JSON (class WriteForeign, write, writeImpl)
 
 foreign import data Raven :: Type -> Type -> Type
 foreign import data RAVEN :: Type -> Effect
@@ -99,18 +99,34 @@ withChangedContext r f action = do
 
 
 
-type Breadcrumb r = { category :: String | r }
+type Breadcrumb a r = { category :: a | r }
 
-recordBreadcrumb :: ∀ h ctx eff r. WriteForeign (Breadcrumb r) => Raven h ctx -> Breadcrumb r -> Eff (raven :: RAVEN h | eff) Unit
+recordBreadcrumb :: ∀ h ctx eff r a. WriteForeign (Breadcrumb a r) => Raven h ctx -> Breadcrumb a r -> Eff (raven :: RAVEN h | eff) Unit
 recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
 
+data Category = Test
+              | Auth
+              | UI
+
+instance writeForeignCategoryInst :: WriteForeign Category where
+  writeImpl Test = writeImpl "Test"
+  writeImpl Auth = writeImpl "Auth"
+  writeImpl UI = writeImpl "UI"
+
+
+newtype Id = Id Int
+derive newtype instance rfI :: WriteForeign Id
+
+
+-- derive instance categoryShow :: Show Category
+-- derive instance categoryWriteForeign :: WriteForeign Category
 
 main :: forall e. Eff (console :: CONSOLE, process :: PROCESS | e) Unit
 main = do
   dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN"
   ret ← withRaven dsn
                   {x: "Some context", t: "part of ctx"} ( \r -> do
-    recordBreadcrumb r {category: "test", level:"debug", message:"st brdcrmb"}
+    recordBreadcrumb r {category: Test, level:"debug", message:"st brdcrmb"}
     captureMessage r "st message2"
     traceContext r "ctx1"
 
@@ -118,7 +134,7 @@ main = do
     traceContext r "ctx2"
 
     ret' <- withNewContext r {z:"changed type :)"} ( \r' -> do
-      recordBreadcrumb r' {category: "test", level:"debug", message:"st brdcrmb in changed"}
+      recordBreadcrumb r' {category: UI, level:"debug", message:"st brdcrmb in changed"}
       captureMessage r' "st message in changed2"
       traceContext r' "changed ctx"
       pure 10
