@@ -96,9 +96,11 @@ withChangedContext r f action = do
   pure ret
 
 
-recordBreadcrumb :: ∀ h ctx eff bc. WriteForeign bc => Raven h ctx -> bc -> Eff (raven :: RAVEN h | eff) Unit
-recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
 
+type Breadcrumb r = { category :: String | r }
+
+recordBreadcrumb :: ∀ h ctx eff r. WriteForeign (Breadcrumb r) => Raven h ctx -> Breadcrumb r -> Eff (raven :: RAVEN h | eff) Unit
+recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
 
 
 main :: forall e. Eff (console :: CONSOLE | e) Unit
@@ -106,19 +108,22 @@ main = do
 
   ret ← withRaven (Dsn "")
                   {x: "Some context", t: "part of ctx"} ( \r -> do
-    recordBreadcrumb r {level:"debug", message:"st brdcrmb"}
-    captureMessage r "st message1"
+    recordBreadcrumb r {category: "test", level:"debug", message:"st brdcrmb"}
+    captureMessage r "st message2"
     traceContext r "ctx1"
 
     modifyContext r _{x="modified context"}
     traceContext r "ctx2"
 
-    withNewContext r {z:"changed type :)"} ( \r' -> do
-      recordBreadcrumb r' {level:"debug", message:"st brdcrmb in changed"}
-      captureMessage r' "st message in changed1"
+    ret' <- withNewContext r {z:"changed type :)"} ( \r' -> do
+      recordBreadcrumb r' {category: "test", level:"debug", message:"st brdcrmb in changed"}
+      captureMessage r' "st message in changed2"
       traceContext r' "changed ctx"
+      pure 10
                                                 )
     traceContext r "ctx2'"
+
+    pure ret'
 
                                                                  )
   log (show ret)
