@@ -3,106 +3,131 @@ module Main where
 import Prelude
 
 import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.Console (CONSOLE)
-import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2, EffFn1, runEffFn1)
+import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2, EffFn3, runEffFn3, EffFn1, runEffFn1)
 import Debug.Trace (traceAnyA)
 import Data.Foreign (Foreign)
 import Simple.JSON (class WriteForeign, write)
--- import Unsafe.Coerce (unsafeCoerce)
-foreign import data Raven ∷ Type → Type
-foreign import data RAVEN ∷ Effect
+
+foreign import data Raven :: Type -> Type -> Type
+foreign import data RAVEN :: Type -> Effect
+
 
 newtype Dsn = Dsn String
 
-foreign import ravenImpl ∷ ∀ ctx eff. EffFn2 (raven ∷ RAVEN | eff) String ctx (Raven ctx)
+foreign import withRavenImpl ::
+  ∀ ctx eff a
+  . EffFn3 eff
+           String
+           Foreign
+           (∀ h. Raven h ctx -> Eff (raven :: RAVEN h | eff) a)
+           a
 
-foreign import captureMessageImpl ∷ ∀ ctx eff. EffFn2 (raven ∷ RAVEN | eff) (Raven ctx) String Unit
+foreign import withNewCtxImpl ::
+  ∀ ctx ctx' eff a h
+  . EffFn3 (raven :: RAVEN h | eff)
+           (Raven h ctx)
+           ctx'
+           (∀ h'. Raven h' ctx' -> Eff (raven :: RAVEN h' | eff) a)
+           a
 
-foreign import inContextImpl ∷ ∀ a ctx eff. EffFn2 (raven ∷ RAVEN | eff) (Raven ctx) (Eff (raven ∷ RAVEN | eff) a) a
+foreign import captureMessageImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) Foreign Unit
 
-foreign import getContextImpl ∷ ∀ ctx eff. EffFn1 (raven ∷ RAVEN | eff) (Raven ctx) ctx
+foreign import recordBreadcrumbImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) Foreign Unit
 
-foreign import setContextImpl ∷ ∀ ctx eff. EffFn2 (raven ∷ RAVEN | eff) (Raven ctx) ctx Unit
+foreign import setContextImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) ctx Unit
 
-foreign import recordBreadcrumbImpl ∷ ∀ ctx eff. EffFn2 (raven ∷ RAVEN | eff) (Raven ctx) Foreign Unit
+foreign import getContextImpl :: ∀ h ctx eff. EffFn1 (raven :: RAVEN h | eff) (Raven h ctx) ctx
 
-raven ∷ ∀ ctx eff. Dsn → ctx → Eff (raven ∷ RAVEN | eff) (Raven ctx)
-raven (Dsn s) ctx = runEffFn2 ravenImpl s ctx
+foreign import throw :: ∀ eff. Eff eff Int
 
-captureMessage ∷ ∀ ctx eff. Raven ctx → String → Eff (raven ∷ RAVEN | eff) Unit
-captureMessage r msg = runEffFn2 captureMessageImpl r msg
 
-getContext ∷ ∀ ctx eff. Raven ctx → Eff (raven ∷ RAVEN | eff) ctx
+withRaven :: ∀ a ctx eff. WriteForeign ctx
+          => Dsn
+          -> ctx
+          -> (∀ h. (Raven h ctx -> Eff (raven :: RAVEN h | eff) a))
+          -> Eff eff a
+
+withRaven (Dsn s) ctx act = runEffFn3 withRavenImpl s (write ctx) act
+
+captureMessage :: ∀ h ctx eff msg. WriteForeign msg
+               => Raven h ctx
+               -> msg
+               -> Eff (raven :: RAVEN h | eff) Unit
+
+captureMessage r msg = runEffFn2 captureMessageImpl r (write msg)
+
+getContext :: ∀ h ctx eff
+            . Raven h ctx
+           -> Eff (raven :: RAVEN h | eff) ctx
+
 getContext r = runEffFn1 getContextImpl r
 
-setContext ∷ ∀ ctx eff. Raven ctx → ctx → Eff (raven ∷ RAVEN | eff) Unit
+setContext :: ∀ h ctx eff
+            . Raven h ctx
+           -> ctx
+           -> Eff (raven :: RAVEN h | eff) Unit
+
 setContext r ctx = runEffFn2 setContextImpl r ctx
 
-modifyContext ∷ ∀ ctx eff. Raven ctx → (ctx → ctx) → Eff (raven ∷ RAVEN | eff) Unit
+modifyContext :: ∀ h ctx eff
+               . Raven h ctx
+              -> (ctx -> ctx)
+              -> Eff (raven :: RAVEN h | eff) Unit
 modifyContext r f = (f <$> getContext r) >>= setContext r
 
-withContext ∷ ∀ ctx eff a. Raven ctx → ctx → (Eff (raven ∷ RAVEN | eff) a) → Eff (raven ∷ RAVEN | eff) a
-withContext r ctx = withModifiedContext r (const ctx)
+withNewContext :: ∀ h ctx ctx' eff a. WriteForeign ctx'
+               => Raven h ctx
+               -> ctx'
+               -> (∀ h'. Raven h' ctx' -> Eff (raven :: RAVEN h' | eff) a)
+               -> Eff (raven :: RAVEN h | eff) a
+withNewContext r ctx = withChangedContext r (const ctx)
 
-withModifiedContext :: ∀ ctx eff a. Raven ctx → (ctx → ctx) → (Eff (raven ∷ RAVEN | eff) a) → Eff (raven ∷ RAVEN | eff) a
-withModifiedContext r f action = do
+withChangedContext :: ∀ h ctx ctx' eff a. WriteForeign ctx'
+                   => Raven h ctx
+                   -> (ctx -> ctx')
+                   -> (∀ h'. Raven h' ctx' -> Eff (raven :: RAVEN h' | eff) a)
+                   -> Eff (raven :: RAVEN h | eff) a
+
+withChangedContext r f action = do
   orig <- getContext r
-  setContext r (f orig)
-  ret <- action
+  ret <- runEffFn3 withNewCtxImpl r (f orig) action
   setContext r orig
   pure ret
 
 
-recordBreadcrumb :: ∀ ctx eff bc. WriteForeign bc =>  Raven ctx → bc → Eff (raven ∷ RAVEN | eff) Unit
+recordBreadcrumb :: ∀ h ctx eff bc. WriteForeign bc => Raven h ctx -> bc -> Eff (raven :: RAVEN h | eff) Unit
 recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
 
 
 
-
--- inContext ∷ ∀ a eff. Raven → Eff (raven ∷ RAVEN | eff) a → Eff (raven ∷ RAVEN | eff) a
--- inContext r eff = runEffFn2 inContextImpl r eff
-
-foreign import throw ∷ ∀ eff. Eff eff Int
-
-main ∷ forall e. Eff (console ∷ CONSOLE, raven ∷ RAVEN | e) Unit
+main :: forall e. Eff (console :: CONSOLE | e) Unit
 main = do
-  r ← raven (Dsn "") -- put dsn here
-            {x: "Some context"}
 
-  context ← getContext r
+  ret ← withRaven (Dsn "")
+                  {x: "Some context", t: "part of ctx"} ( \r -> do
+    recordBreadcrumb r {level:"debug", message:"st brdcrmb"}
+    captureMessage r "st message1"
+    traceContext r "ctx1"
 
-  setContext r {x: "New context"}
+    modifyContext r _{x="modified context"}
+    traceContext r "ctx2"
 
-  traceAnyA "Old context:"
-  traceAnyA context
+    withNewContext r {z:"changed type :)"} ( \r' -> do
+      recordBreadcrumb r' {level:"debug", message:"st brdcrmb in changed"}
+      captureMessage r' "st message in changed1"
+      traceContext r' "changed ctx"
+                                                )
+    traceContext r "ctx2'"
 
-  withModifiedContext r _{x="Inner"} (do
-    inner ← getContext r
-    traceAnyA "inner context:"
-    traceAnyA inner)
+                                                                 )
+  log (show ret)
+  pure unit
 
-  newContext ← getContext r
-  traceAnyA "New context:"
-  traceAnyA newContext
-
-  traceAnyA "Old context:"
-  traceAnyA context
-  recordBreadcrumb r {level: "error", category: "test", message: "test message"}
-  captureMessage r ("MESSAGE catch this 3")
-
-  recordBreadcrumb r {level: "warning", category: "test", message: "warning brd"}
-  -- _ ← throw -- uncommenting this line will cause last messages not to be send
-  --           -- as the exception is not hadnled by raven
-
-  recordBreadcrumb r {level: "warning", category: "test", message: "warning brd"}
-
-  captureMessage r ("MESSAGE catch this 4")
-  -- -- x ← y r
-
-  -- x ← inContext r throw
-  -- logShow x
-  -- traceAnyA x
-  -- captureMessage r "NO GLOB"
-  -- traceAnyA r
-
-  -- traceAnyA r
+  where
+    traceContext :: forall h ctx eff. Raven h ctx -> String -> Eff (raven :: RAVEN h, console :: CONSOLE | eff) Unit
+    traceContext r name = (do
+      ctx <- getContext r
+      traceAnyA name
+      traceAnyA ctx
+                          )

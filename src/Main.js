@@ -1,17 +1,25 @@
-/* global exports */
 "use strict";
-// module Sentry
 
 var Raven = require('raven');
 
-exports.ravenImpl = function(dsn, ctx) {
-  var raven = new Raven.Client(dsn);
-  raven.setContext(ctx);
-  return raven;
+
+exports.withRavenImpl = function(dsn, ctx, act) {
+    var raven = new Raven.Client(dsn);
+    raven.setContext(ctx);
+    return raven.context(ctx, function(){
+        return act(raven)();
+    });
+};
+
+exports.withNewCtxImpl = function(raven, ctx, act) {
+    raven.setContext(ctx);
+    return raven.context(ctx, function(){
+        return act(raven)();
+    });
 };
 
 exports.captureMessageImpl = function(raven, msg) {
-  raven.captureMessage(msg);
+    raven.captureMessage(msg);
 };
 
 exports.getContextImpl = function(raven) {
@@ -20,10 +28,6 @@ exports.getContextImpl = function(raven) {
 
 exports.setContextImpl = function(raven, ctx) {
   raven.setContext(ctx);
-};
-
-exports.inContextImpl = function(raven, eff) {
-  return raven.context(eff);
 };
 
 exports.extend =
@@ -39,7 +43,6 @@ exports.extend =
         }
         return target;
     };
-
 
 exports.recordBreadcrumbImpl = function(raven, breadcrumb) {
     breadcrumb = exports.extend(
