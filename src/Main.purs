@@ -35,6 +35,8 @@ foreign import withNewCtxImpl ::
 
 foreign import captureMessageImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) Foreign Unit
 
+foreign import captureExceptionImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) Foreign Unit
+
 foreign import recordBreadcrumbImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) Foreign Unit
 
 foreign import setContextImpl :: ∀ h ctx eff. EffFn2 (raven :: RAVEN h | eff) (Raven h ctx) ctx Unit
@@ -51,6 +53,13 @@ withRaven :: ∀ a ctx eff. WriteForeign ctx
           -> Eff eff a
 
 withRaven (Dsn s) ctx act = runEffFn3 withRavenImpl s (write ctx) act
+
+captureException :: ∀ h ctx eff err. WriteForeign err
+                 => Raven h ctx
+                 -> err
+                 -> Eff (raven :: RAVEN h | eff) Unit
+
+captureException r err = runEffFn2 captureExceptionImpl r (write err)
 
 captureMessage :: ∀ h ctx eff msg. WriteForeign msg
                => Raven h ctx

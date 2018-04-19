@@ -22,6 +22,10 @@ exports.captureMessageImpl = function(raven, msg) {
     raven.captureMessage(msg);
 };
 
+exports.captureExceptionImpl = function(raven, err) {
+    raven.captureException(err);
+};
+
 exports.getContextImpl = function(raven) {
   return raven.getContext();
 };
