@@ -4,7 +4,7 @@ import Prelude
 
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Uncurried (EffFn2, runEffFn2, EffFn3, runEffFn3, EffFn1, runEffFn1)
+import Control.Monad.Eff.Uncurried (mkEffFn1, EffFn2, runEffFn2, EffFn3, runEffFn3, EffFn4, runEffFn4, EffFn1, runEffFn1)
 import Node.Process (PROCESS, lookupEnv)
 import Data.Maybe (maybe)
 import Debug.Trace (traceAnyA)
@@ -18,9 +18,10 @@ foreign import data RAVEN :: Type -> Effect
 newtype Dsn = Dsn String
 
 foreign import withRavenImpl ::
-  ∀ ctx eff a
-  . EffFn3 eff
+  ∀ ctx eff cfg a
+  . EffFn4 eff
            String
+           cfg
            Foreign
            (∀ h. Raven h ctx -> Eff (raven :: RAVEN h | eff) a)
            a
@@ -46,13 +47,23 @@ foreign import getContextImpl :: ∀ h ctx eff. EffFn1 (raven :: RAVEN h | eff) 
 foreign import throw :: ∀ eff. Eff eff Int
 
 
-withRaven :: ∀ a ctx eff. WriteForeign ctx
+withRaven :: ∀ a ctx opts eff
+           . WriteForeign ctx
+          => Dsn
+          -> opts
+          -> ctx
+          -> (∀ h. (Raven h ctx -> Eff (raven :: RAVEN h | eff) a))
+          -> Eff eff a
+
+withRaven (Dsn s) opts ctx act = runEffFn4 withRavenImpl s opts (write ctx) act
+
+withDefRaven :: ∀ a ctx eff. WriteForeign ctx
           => Dsn
           -> ctx
           -> (∀ h. (Raven h ctx -> Eff (raven :: RAVEN h | eff) a))
           -> Eff eff a
 
-withRaven (Dsn s) ctx act = runEffFn3 withRavenImpl s (write ctx) act
+withDefRaven (Dsn s) ctx act = runEffFn4 withRavenImpl s (write {}) (write ctx) act
 
 captureException :: ∀ h ctx eff err. WriteForeign err
                  => Raven h ctx
@@ -133,7 +144,7 @@ derive newtype instance rfI :: WriteForeign Id
 main :: forall e. Eff (console :: CONSOLE, process :: PROCESS | e) Unit
 main = do
   dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN"
-  ret ← withRaven dsn
+  ret ← withRaven dsn {dataCallback : mkEffFn1 (\x -> traceAnyA x *> pure x)}
                   {x: "Some context", t: "part of ctx"} ( \r -> do
     recordBreadcrumb r {category: Test, level:"debug", message:"st brdcrmb"}
     captureMessage r "st message2"

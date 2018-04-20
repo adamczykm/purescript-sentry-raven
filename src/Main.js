@@ -3,8 +3,8 @@
 var Raven = require('raven');
 
 
-exports.withRavenImpl = function(dsn, ctx, act) {
-    var raven = new Raven.Client(dsn);
+exports.withRavenImpl = function(dsn, options, ctx, act) {
+    var raven = new Raven.Client(dsn, options);
     raven.setContext(ctx);
     return raven.context(ctx, function(){
         return act(raven)();
