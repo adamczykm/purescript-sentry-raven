@@ -226,7 +226,7 @@ requestOutputTest dsn opts ctx timeout validateResult validateSentryRequest acti
     else delay timeout *> (validateSentryRequest <$> tryTakeVar sentryRequestVar)
 
   where
-    updateWithGeneratedRequest avar = (mkEffFn1 (\x → launchAff_ (putVar x avar *> traceAnyA x *> pure x)))
+    updateWithGeneratedRequest avar = (mkEffFn1 (\x → launchAff_ (putVar x avar *> traceAnyA x) *> pure x))
 
 
 
