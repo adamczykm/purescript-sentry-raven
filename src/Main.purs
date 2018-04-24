@@ -2,14 +2,31 @@ module Main where
 
 import Prelude
 
+import Control.Monad.Aff (Aff, delay, launchAff_)
+import Control.Monad.Aff.AVar (AVAR, makeEmptyVar, putVar, tryTakeVar)
 import Control.Monad.Eff (Eff, kind Effect)
+import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Uncurried (mkEffFn1, EffFn2, runEffFn2, EffFn3, runEffFn3, EffFn4, runEffFn4, EffFn1, runEffFn1)
-import Node.Process (PROCESS, lookupEnv)
-import Data.Maybe (maybe)
+import Control.Monad.Except (runExcept)
+import Data.Either (either)
+import Data.Foreign (Foreign, F)
+import Data.Foreign.Index (readProp, readIndex)
+import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
+import Data.List (List(..), (:))
+import Data.Maybe (maybe, Maybe(..))
+import Data.Newtype
+import Data.Record (insert)
+import Data.Symbol (SProxy(..))
+import Data.Time.Duration (Milliseconds(..))
 import Debug.Trace (traceAnyA)
-import Data.Foreign (Foreign)
-import Simple.JSON (class WriteForeign, write, writeImpl)
+import Simple.JSON (class ReadForeign, class WriteForeign, write, writeImpl, read)
+import Type.Row (class RowLacks)
+
+-- import Node.Process (PROCESS, lookupEnv)
+import Breadcrumb
+
+------------------------ FOREIGN ---------------------------
 
 foreign import data Raven ∷ Type → Type → Type
 foreign import data RAVEN ∷ Type → Effect
@@ -70,6 +87,8 @@ foreign import getContextImpl ∷
 
 foreign import throw ∷ ∀ eff. Eff eff Int
 
+
+------------------------ API  ---------------------------
 
 withRaven ∷ ∀ a ctx opts eff
           . WriteForeign ctx
@@ -150,18 +169,73 @@ withChangedContext r f action = do
   pure ret
 
 
-type Breadcrumb a r = { category ∷ a | r }
 
 recordBreadcrumb ∷ ∀ h ctx eff r a
-                 . WriteForeign (Breadcrumb a r)
+                 . WriteForeign a
                  ⇒ Raven h ctx
-                 → Breadcrumb a r
+                 → Breadcrumb a
                  → Eff (raven ∷ RAVEN h | eff) Unit
 recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
+
+
+
+--------------- UTILS -------------------
+
+-- maybe we could clean the lengthy types with these aliases?
+type RavenFun0 eff o = ∀ h ctx. Raven h ctx → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun1 eff i o = ∀ h ctx. Raven h ctx → i → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun2 eff i0 i1 o = ∀ h ctx. Raven h ctx → i0 → i1 → Eff (raven ∷ RAVEN h | eff) o
+
+data RIx = IxP String | IxI Int
+readSub :: RIx -> Foreign -> F Foreign
+readSub = case _ of
+  IxP str → readProp str
+  IxI i → readIndex i
+
+parseForeignNested ∷ ∀ a. ReadForeign a ⇒ List RIx → Foreign → F a
+parseForeignNested Nil frgn = read frgn
+parseForeignNested (Cons p ps) frgn = readSub p frgn >>= parseForeignNested ps
+
+parseForeignNested' ∷ ∀ a. ReadForeign a ⇒ List RIx → Foreign → Maybe a
+parseForeignNested' xs = parseForeignNested xs >>> runExcept >>> either (const Nothing) Just
+
+
+--------------- TESTS ---------------------
+
+requestOutputTest ∷ ∀ opts eff ctx a
+                  . RowLacks "dataCallback" opts
+                  ⇒ WriteForeign ctx
+                  ⇒ Dsn
+                  → { | opts}
+                  → ctx
+                  → Milliseconds
+                  → (a → Boolean)
+                  → (Maybe Foreign → Boolean)
+                  → (∀ h. Raven h ctx → Eff (avar ∷ AVAR, raven ∷ RAVEN h | eff) a)
+                  → Aff (avar ∷ AVAR | eff) Boolean
+requestOutputTest dsn opts ctx timeout validateResult validateSentryRequest action = do
+  sentryRequestVar ← makeEmptyVar
+  ret ← liftEff $ withRaven dsn
+                  (insert (SProxy :: SProxy "dataCallback")
+                          (updateWithGeneratedRequest sentryRequestVar)
+                          opts)
+                  ctx
+                  action
+
+  if not (validateResult ret) then pure false
+    else delay timeout *> (validateSentryRequest <$> tryTakeVar sentryRequestVar)
+
+  where
+    updateWithGeneratedRequest avar = (mkEffFn1 (\x → launchAff_ (putVar x avar *> traceAnyA x *> pure x)))
+
+
+
+---------------------- EXAMPLE & MAIN --------------------------------
 
 data Category = Test
               | Auth
               | UI
+derive instance categoryEqImpl ∷ Eq Category
 
 instance writeForeignCategoryInst ∷ WriteForeign Category where
   writeImpl Test = writeImpl "Test"
@@ -169,41 +243,77 @@ instance writeForeignCategoryInst ∷ WriteForeign Category where
   writeImpl UI = writeImpl "UI"
 
 
--- maybe we could clean the lengthy types with these aliases?
-type RavenFun0 eff o = ∀ h ctx. Raven h ctx → Eff (raven ∷ RAVEN h | eff) o
-type RavenFun1 eff i o = ∀ h ctx. Raven h ctx → i → Eff (raven ∷ RAVEN h | eff) o
-type RavenFun2 eff i0 i1 o = ∀ h ctx. Raven h ctx → i0 → i1 → Eff (raven ∷ RAVEN h | eff) o
+main ∷ ∀ e. Eff (avar ∷ AVAR, console ∷ CONSOLE | e) Unit
+main = launchAff_ do
 
-main ∷ ∀ e. Eff (console ∷ CONSOLE, process ∷ PROCESS | e) Unit
-main = do
-  dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN"
-  ret ← withRaven dsn {dataCallback : mkEffFn1 (\x → traceAnyA x *> pure x)}
-                  {x: "Some context", t: "part of ctx"} ( \r → do
-    recordBreadcrumb r {category: Test, level:"debug", message:"st brdcrmb"}
-    captureMessage r "st message2"
-    traceContext r "ctx1"
+  -- -------------- test
+  let brdcrmb = breadcrumb Test ( _ {message = d "st brdcrmb", type = d Http, level = d Info} )
+  _ ← printTestSimple "test1" $ test {} (maybe true (const false)) (\rt → do
+        recordBreadcrumb rt brdcrmb
+        -- captureMessage rt "st message2"
+                                                                   )
+  let validateBreadCrumbs mfrn = maybe false (_ == "st brdcrmb") (mfrn >>= parseForeignNested' (IxP "breadcrumbs" : IxI 0 : IxP "message" : Nil))
+      validateMessageName mfrn = maybe false (_ == "st message2") (mfrn >>= parseForeignNested' (IxP "message" : Nil))
 
-    modifyContext r _{x="modified context"}
-    traceContext r "ctx2"
+  _ ← printTestSimple "test2" $ test {tags: {x: 1}, user: {id: 1}} validateBreadCrumbs (\rt → do
+        recordBreadcrumb rt brdcrmb
+        captureMessage rt "st message2"
+                                                                   )
 
-    ret' <- withNewContext r {z:"changed type :)"} ( \r' → do
-      recordBreadcrumb r' {category: UI, level:"debug", message:"st brdcrmb in changed"}
-      captureMessage r' "st message in changed2"
-      traceContext r' "changed ctx"
-      pure 10
-                                                )
-    traceContext r "ctx2'"
-
-    pure ret'
-
-                                                                 )
-  log (show ret)
   pure unit
 
+  -------------------
+
+  -- dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN2"
+
+  -- tempAvar ← makeEmptyVar
+  -- ret ← withRaven dsn {autoBreadcrumbs: true, dataCallback : mkEffFn1 (\x → putVar x tempAvar (const $ pure unit) *> pure x)}
+  --                 {x: "some context", t: "part of ctx"} ( \r → do
+
+  --   recordBreadcrumb r {category: Test, level:"debug", message:"st brdcrmb"}
+  --   captureMessage r "st message2"
+  --   traceContext r "ctx1"
+
+  --   modifyContext r _{x="modified context"}
+  --   traceContext r "ctx2"
+
+  --   ret' <- withNewContext r {z:"changed type :)"} ( \r' → do
+  --     recordBreadcrumb r' {category: UI, level:"debug", message:"st brdcrmb in changed"}
+  --     captureMessage r' "st message in changed2"
+  --     traceContext r' "changed ctx"
+  --     pure 10
+
+  --                                               )
+  --   traceContext r "ctx2'"
+
+  --   pure 10
+
+  --                                                                )
+  -- request ← tryTakeVar tempAvar
+  -- traceAnyA request
+  -- -- log (show ret)
+  -- pure unit
+
   where
+    d ∷ ∀ a. a → NullOrUndefined a
+    d a = NullOrUndefined (Just a)
+
+    printTestSimple name res = map (bool ("Test " <> name <> " has failed!") ("Test " <> name <> " Ok!")) res >>= (liftEff <<< log)
+
+    test ∷ ∀ eff ctx a
+         . WriteForeign ctx
+         ⇒ ctx
+         → (Maybe Foreign → Boolean)
+         → (∀ h. Raven h ctx → Eff (avar ∷ AVAR, raven ∷ RAVEN h | eff) a)
+         → Aff (avar ∷ AVAR | eff) Boolean
+    test ctx validate action = requestOutputTest (Dsn "") {} ctx (Milliseconds 500.0) (const true) validate action
+
     traceContext ∷ ∀ eff. RavenFun1 (console ∷ CONSOLE | eff) String Unit
     traceContext r name = (do
       ctx <- getContext r
       traceAnyA name
-      traceAnyA ctx
-                          )
+      traceAnyA ctx)
+
+    -- | Case analysis for the `Boolean` type
+    bool :: forall a. a -> a -> Boolean -> a
+    bool a b c = if c then b else a
