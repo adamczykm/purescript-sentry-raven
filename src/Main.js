@@ -5,15 +5,17 @@ var Raven = require('raven');
 
 exports.withRavenImpl = function(dsn, options, ctx, act) {
     var raven = new Raven.Client(dsn, options);
-    raven.setContext(ctx);
-    return raven.context(ctx, function(){
+    var ctx_cpy = JSON.parse(JSON.stringify(ctx));
+    raven.setContext(ctx_cpy);
+    return raven.context(ctx_cpy, function(){
         return act(raven)();
     });
 };
 
 exports.withNewCtxImpl = function(raven, ctx, act) {
-    raven.setContext(ctx);
-    return raven.context(ctx, function(){
+    var ctx_cpy = JSON.parse(JSON.stringify(ctx));
+    raven.setContext(ctx_cpy);
+    return raven.context(ctx_cpy, function(){
         return act(raven)();
     });
 };
@@ -31,7 +33,8 @@ exports.getContextImpl = function(raven) {
 };
 
 exports.setContextImpl = function(raven, ctx) {
-  raven.setContext(ctx);
+  var ctx_cpy = JSON.parse(JSON.stringify(ctx));
+  raven.setContext(ctx_cpy);
 };
 
 exports.extend =
