@@ -10,7 +10,7 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Uncurried (mkEffFn1, EffFn2, runEffFn2, EffFn3, runEffFn3, EffFn4, runEffFn4, EffFn1, runEffFn1)
 import Control.Monad.Except (runExcept)
-import Data.Either (either)
+import Data.Either (either, fromRight)
 import Data.Foreign (Foreign, F)
 import Data.Foreign.Index (readProp, readIndex)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
@@ -22,6 +22,7 @@ import Data.Symbol (SProxy(SProxy))
 import Data.Time.Duration (Milliseconds(..))
 import Debug.Trace (traceAnyA)
 import Node.Process (PROCESS, lookupEnv)
+import Partial.Unsafe (unsafePartial)
 import Simple.JSON (class ReadForeign, class WriteForeign, read, write, writeImpl)
 import Type.Row (class RowLacks)
 
@@ -87,7 +88,7 @@ foreign import getContextImpl ∷
   ∀ h ctx eff
   . EffFn1 (raven ∷ RAVEN h | eff)
            (Raven h ctx)
-           ctx
+           Foreign
 
 foreign import throw ∷ ∀ eff. Eff eff Int
 
@@ -144,13 +145,17 @@ captureMessage r msg = runEffFn2 captureMessageImpl r (write msg)
 
 
 getContext ∷ ∀ h ctx eff
-           . Raven h ctx
+           . ReadForeign ctx
+           ⇒ Raven h ctx
            → Eff (raven ∷ RAVEN h | eff) ctx
 
-getContext r = runEffFn1 getContextImpl r
+getContext r = do
+  ctx <- runEffFn1 getContextImpl r
+  pure $ unsafePartial fromRight (runExcept (read ctx))
 
 setContext ∷ ∀ h ctx eff
-           . WriteForeign ctx
+           . ReadForeign ctx
+           ⇒ WriteForeign ctx
            ⇒ Raven h ctx
            → ctx
            → Eff (raven ∷ RAVEN h | eff) Unit
@@ -159,6 +164,7 @@ setContext r ctx = runEffFn2 setContextImpl r (write ctx)
 
 modifyContext ∷ ∀ h ctx eff
               . WriteForeign ctx
+              ⇒ ReadForeign ctx
               ⇒ Raven h ctx
               → (ctx → ctx)
               → Eff (raven ∷ RAVEN h | eff) Unit
@@ -166,6 +172,7 @@ modifyContext r f = (f <$> getContext r) >>= setContext r
 
 withNewContext ∷ ∀ h ctx ctx' eff a
                . WriteForeign ctx ⇒ WriteForeign ctx'
+               ⇒ ReadForeign ctx ⇒ ReadForeign ctx'
                ⇒ Raven h ctx
                → ctx'
                → (∀ h'. Raven h' ctx' → Eff (raven ∷ RAVEN h' | eff) a)
@@ -175,6 +182,7 @@ withNewContext r ctx = withChangedContext r (const ctx)
 
 withChangedContext ∷ ∀ h ctx ctx' eff a
                    . WriteForeign ctx ⇒ WriteForeign ctx'
+                   ⇒ ReadForeign ctx ⇒ ReadForeign ctx'
                    ⇒ Raven h ctx
                    → (ctx → ctx')
                    → (∀ h'. Raven h' ctx' → Eff (raven ∷ RAVEN h' | eff) a)
@@ -192,6 +200,7 @@ withAddedTags ::
   ∀ h ctx eff t1 t2 t3 a
   . Union t2 t1 t3
   ⇒ WriteForeign { tags :: { | t1 } | ctx}
+  ⇒ ReadForeign { tags :: { | t1 } | ctx}
   ⇒ Raven h { tags :: { | t1 } | ctx}
   → { | t2 }
   → (∀ h'. Raven h' { tags :: { | t3 } | ctx} -> Eff ( raven :: RAVEN h' | eff) a)
@@ -217,6 +226,7 @@ withAddedExtraContext ::
   ∀ h ctx eff t1 t2 t3 a
   . Union t2 t1 t3
   ⇒ WriteForeign { extra :: { | t1 } | ctx}
+  ⇒ ReadForeign { extra :: { | t1 } | ctx}
   ⇒ Raven h { extra :: { | t1 } | ctx}
   → { | t2 }
   → (∀ h'. Raven h' { extra :: { | t3 } | ctx} -> Eff ( raven :: RAVEN h' | eff) a)
@@ -231,7 +241,8 @@ withAddedExtraContext  r extra action = do
 
 withUser ::
   ∀ h ctx eff t1 t2 t3 a
-  . WriteForeign { user :: t1 | ctx} 
+  . WriteForeign { user :: t1 | ctx}
+  ⇒ ReadForeign { user :: t1 | ctx}
   ⇒ Raven h { user :: t1 | ctx}
   → t2
   → (∀ h'. Raven h' { user :: t2 | ctx} -> Eff ( raven :: RAVEN h' | eff) a)
@@ -245,7 +256,8 @@ withUser r user action = do
 
 setTags ::
   ∀ h ctx eff t1 a
-  . WriteForeign { tags :: t1 | ctx} 
+  . WriteForeign { tags :: t1 | ctx}
+  ⇒ ReadForeign { tags :: t1 | ctx}
   ⇒ Raven h { tags :: t1 | ctx}
   → t1
   → Eff ( raven :: RAVEN h | eff) Unit
@@ -256,7 +268,8 @@ setTags r tags = do
 
 modifyTags ::
   ∀ h ctx eff t1 a
-  . WriteForeign{ tags :: t1 | ctx} 
+  . WriteForeign{ tags :: t1 | ctx}
+  ⇒ ReadForeign{ tags :: t1 | ctx}
   ⇒ Raven h { tags :: t1 | ctx}
   → (t1 -> t1)
   → Eff ( raven :: RAVEN h | eff) Unit
@@ -268,6 +281,7 @@ modifyTags r f = do
 setUser ::
   ∀ h ctx eff t1 a
   . WriteForeign { user :: t1 | ctx}
+  ⇒ ReadForeign { user :: t1 | ctx}
   ⇒ Raven h { user :: t1 | ctx}
   → t1
   → Eff ( raven :: RAVEN h | eff) Unit
@@ -279,6 +293,7 @@ setUser r user = do
 modifyUser ::
   ∀ h ctx eff t1 a
   . WriteForeign { user :: t1 | ctx}
+  ⇒ ReadForeign { user :: t1 | ctx}
   ⇒ Raven h { user :: t1 | ctx}
   → (t1 -> t1)
   → Eff ( raven :: RAVEN h | eff) Unit
@@ -290,6 +305,7 @@ modifyUser r f = do
 setExtraContext ::
   ∀ h ctx eff t1 t2 t3 a
   . WriteForeign { extra :: t1 | ctx}
+  ⇒ ReadForeign { extra :: t1 | ctx}
   ⇒ Raven h { extra :: t1 | ctx}
   → t1
   → Eff ( raven :: RAVEN h | eff) Unit
@@ -301,6 +317,7 @@ setExtraContext r extra = do
 modifyExtraContext ::
   ∀ h ctx eff t1 a
   . WriteForeign { extra :: t1 | ctx}
+  ⇒ ReadForeign { extra :: t1 | ctx}
   ⇒ Raven h { extra :: t1 | ctx}
   → (t1 -> t1)
   → Eff ( raven :: RAVEN h | eff) Unit
@@ -326,9 +343,9 @@ recordBreadcrumb r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
 --------------- UTILS -------------------
 
 -- maybe we could clean the lengthy types with these aliases?
-type RavenFun0 eff o = ∀ h ctx. Raven h ctx → Eff (raven ∷ RAVEN h | eff) o
-type RavenFun1 eff i o = ∀ h ctx. Raven h ctx → i → Eff (raven ∷ RAVEN h | eff) o
-type RavenFun2 eff i0 i1 o = ∀ h ctx. Raven h ctx → i0 → i1 → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun0 eff o = ∀ h ctx. ReadForeign ctx ⇒ Raven h ctx → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun1 eff i o = ∀ h ctx. ReadForeign ctx ⇒ Raven h ctx → i → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun2 eff i0 i1 o = ∀ h ctx. ReadForeign ctx ⇒ Raven h ctx → i0 → i1 → Eff (raven ∷ RAVEN h | eff) o
 
 data RIx = IxP String | IxI Int
 readSub :: RIx -> Foreign -> F Foreign
@@ -429,13 +446,12 @@ main = launchAff_ do
 
   _ <- liftEff (do
       let dsn = Dsn ""
-
       ret ← withDefRaven dsn ( \r → (do
         setTags r (d {a:1,b:"2"})
         setUser r (d {username: "anks"})
         setExtraContext r (d {some: "thing"})
-        -- ctx <- getContext r
-        -- traceAnyA ctx
+        ctx <- getContext r
+        traceAnyA ctx
         captureMessage r "whatevah2"
             ))
 
@@ -473,11 +489,12 @@ main = launchAff_ do
 
     test ∷ ∀ eff ctx a
          . WriteForeign ctx
+         ⇒ ReadForeign ctx
          ⇒ ctx
          → (Maybe Foreign → Boolean)
          → (∀ h. Raven h ctx → Eff (avar ∷ AVAR, raven ∷ RAVEN h | eff) a)
          → Aff (avar ∷ AVAR | eff) Boolean
-    test ctx validate action = requestOutputTest (Dsn "") {} ctx (Milliseconds 1500.0) (const true) validate action
+    test ctx validate action = requestOutputTest (Dsn "") {} ctx (Milliseconds 500.0) (const true) validate action
 
     traceContext ∷ ∀ eff. RavenFun1 (console ∷ CONSOLE | eff) String Unit
     traceContext r name = (do
