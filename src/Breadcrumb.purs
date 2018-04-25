@@ -69,18 +69,12 @@ type BreadcrumbT a = {
   level :: NullOrUndefined Level,
   data :: NullOrUndefined Foreign}
 
-newtype Breadcrumb a = Breadcrumb {
-  message :: NullOrUndefined String,
-  category :: a,
-  type :: NullOrUndefined Type,
-  level :: NullOrUndefined Level,
-  data :: NullOrUndefined Foreign}
-
+newtype Breadcrumb a = Breadcrumb (BreadcrumbT a)
 
 instance rfBreadcrumb :: ReadForeign a => ReadForeign (Breadcrumb a) where
    readImpl = readImpl >>> runExcept >>> map Breadcrumb >>> except
 
-instance wrBreadcrumb :: WriteForeign a => WriteForeign (Breadcrumb a) where
+instance wfBreadcrumb :: WriteForeign a => WriteForeign (Breadcrumb a) where
    writeImpl (Breadcrumb b) = writeImpl b
 
 
