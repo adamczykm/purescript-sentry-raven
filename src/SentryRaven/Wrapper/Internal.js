@@ -71,8 +71,3 @@ exports.recordBreadcrumbImpl = function(raven, breadcrumb) {
     }
     raven.setContext(currCtx);
 };
-
-exports.throw = function() {
-    throw new Error("test error");
-    return 8;
-};

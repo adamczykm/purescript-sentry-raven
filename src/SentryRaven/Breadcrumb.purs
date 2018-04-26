@@ -1,17 +1,25 @@
-module Breadcrumb where
+module Sentry.Raven.Breadcrumb where
 
-import Prelude
 
-import Simple.JSON (class ReadForeign, class WriteForeign, writeImpl, readImpl)
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
-import Data.Maybe (Maybe(..))
-import Control.Monad.Except (except, runExcept )
-import Data.Foreign (Foreign, ForeignError(ForeignError), readString)
-import Data.List.NonEmpty (singleton)
+import Control.Category ((>>>))
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Uncurried (runEffFn2)
+import Control.Monad.Except (except, runExcept)
 import Data.Either (Either(..))
+import Data.Eq (class Eq)
+import Data.Foreign (Foreign, ForeignError(ForeignError), readString)
+import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
+import Data.Function (($))
+import Data.Functor (map)
+import Data.List.NonEmpty (singleton)
+import Data.Maybe (Maybe(..))
+import Data.Semigroup ((<>))
+import Data.Unit (Unit)
+import Sentry.Raven.Wrapper.Internal (RAVEN, Raven, recordBreadcrumbImpl)
+import Simple.JSON (class ReadForeign, class WriteForeign, readImpl, write, writeImpl)
 
 
-data Level = Critical | Error |  Warning | Info | Debug
+data Level = Critical | Error | Warning | Info | Debug
 
 instance eqLevel :: Eq Level where
   eq Critical Critical = true
@@ -38,7 +46,6 @@ instance readForeignLevelInst ∷ ReadForeign Level where
     Right x -> except (Left (singleton (ForeignError $ "Can't parse value of type Level from " <> x)))
     Left e -> except (Left e)
 
-
 data Type = Default | Http | Navigation
 
 instance eqType :: Eq Type where
@@ -52,7 +59,6 @@ instance writeForeignTypeInst ∷ WriteForeign Type where
   writeImpl Http = writeImpl "http"
   writeImpl Navigation = writeImpl "navigation"
 
-
 instance readForeignTypeInst ∷ ReadForeign Type where
   readImpl = readString >>> runExcept >>>  case _ of
     Right "default" -> except (Right Default)
@@ -60,7 +66,6 @@ instance readForeignTypeInst ∷ ReadForeign Type where
     Right "navigation" -> except (Right Navigation)
     Right x -> except (Left (singleton (ForeignError $ "Can't parse value of type Type from " <> x)))
     Left e -> except (Left e)
-
 
 type BreadcrumbT a = {
   message :: NullOrUndefined String,
@@ -77,7 +82,6 @@ instance rfBreadcrumb :: ReadForeign a => ReadForeign (Breadcrumb a) where
 instance wfBreadcrumb :: WriteForeign a => WriteForeign (Breadcrumb a) where
    writeImpl (Breadcrumb b) = writeImpl b
 
-
 breadcrumb :: forall a. a -> (BreadcrumbT a -> BreadcrumbT a) -> Breadcrumb a
 breadcrumb cat mod = Breadcrumb $ mod {
   message : NullOrUndefined Nothing,
@@ -85,3 +89,10 @@ breadcrumb cat mod = Breadcrumb $ mod {
   type : NullOrUndefined Nothing,
   level : NullOrUndefined Nothing,
   data : NullOrUndefined Nothing}
+
+recordBreadcrumb' ∷ ∀ h ctx eff a
+                 . WriteForeign a
+                 ⇒ Raven h ctx
+                 → Breadcrumb a
+                 → Eff (raven ∷ RAVEN h | eff) Unit
+recordBreadcrumb' r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
