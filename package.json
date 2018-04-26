@@ -1,0 +1,23 @@
+{
+  "name": "purescript-sentry-raven",
+  "version": "0.0.1",
+  "description": "Purescript wrapper for Raven - Sentry SDK for Javascript",
+
+  "dependencies": {
+    "raven": "^2.6.0"
+  },
+  "devDependencies": {
+    "purescript": "^0.11.7"
+  },
+
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamczykm/purescript-sentry-raven.git"
+  },
+  "author": "Michał Adamczyk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/adamczykm/purescript-sentry-raven/issues"
+  },
+  "homepage": "https://github.com/adamczykm/purescript-sentry-raven#readme"
+}
