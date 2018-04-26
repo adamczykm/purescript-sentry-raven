@@ -154,8 +154,7 @@ getContext r = do
   pure $ unsafePartial fromRight (runExcept (read ctx))
 
 setContext ∷ ∀ h ctx eff
-           . ReadForeign ctx
-           ⇒ WriteForeign ctx
+           . WriteForeign ctx
            ⇒ Raven h ctx
            → ctx
            → Eff (raven ∷ RAVEN h | eff) Unit
