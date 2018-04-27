@@ -49,7 +49,7 @@ main = launchAff_ do
 
   _ ← printTestSimple "test2" $ test {extra: {contexts: {os: {name: "GNU/Linux"}}}, tags: {x: 1}, user: {id: 1}} validateBreadCrumbs (\rt → do
         recordBreadcrumb' rt brdcrmb
-        captureMessage rt "test message 20"
+        captureMessage rt "test message 20" {}
         ctx <- getContext rt
         traceAnyA ctx )
 
@@ -61,7 +61,7 @@ main = launchAff_ do
           withUser r' {id: 1, email: "pure@script.org"} (\r3 -> do
             withAddedExtraContext r3 {b:2} (\r -> do
               recordBreadcrumb' r brdcrmb
-              captureMessage r "st message2"
+              captureMessage r "st message2" {}
               ctx <- getContext r
               traceAnyA ctx
             ))))

@@ -26,12 +26,12 @@ exports.withNewCtxImpl = function(raven, ctx, act) {
     });
 };
 
-exports.captureMessageImpl = function(raven, msg) {
-    raven.captureMessage(msg);
+exports.captureMessageImpl = function(raven, msg, extra) {
+    raven.captureMessage(msg, extra);
 };
 
-exports.captureExceptionImpl = function(raven, err) {
-    raven.captureException(err);
+exports.captureExceptionImpl = function(raven, err, extra) {
+    raven.captureException(err, extra);
 };
 
 exports.getContextImpl = function(raven) {

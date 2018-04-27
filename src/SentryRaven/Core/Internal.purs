@@ -27,15 +27,17 @@ foreign import withNewCtxImpl ∷
 
 foreign import captureMessageImpl ∷
   ∀ h ctx eff
-  . EffFn2 (raven ∷ RAVEN h | eff)
+  . EffFn3 (raven ∷ RAVEN h | eff)
            (Raven h ctx)
+           Foreign
            Foreign
            Unit
 
 foreign import captureExceptionImpl ∷
   ∀ h ctx eff
-  . EffFn2 (raven ∷ RAVEN h | eff)
+  . EffFn3 (raven ∷ RAVEN h | eff)
            (Raven h ctx)
+           Foreign
            Foreign
            Unit
 
