@@ -15,7 +15,7 @@ import Data.List.NonEmpty (singleton)
 import Data.Maybe (Maybe(..))
 import Data.Semigroup ((<>))
 import Data.Unit (Unit)
-import Sentry.Raven.Wrapper.Internal (RAVEN, Raven, recordBreadcrumbImpl)
+import Sentry.Raven.Core.Internal (RAVEN, Raven, recordBreadcrumbImpl)
 import Simple.JSON (class ReadForeign, class WriteForeign, readImpl, write, writeImpl)
 
 

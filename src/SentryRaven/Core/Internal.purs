@@ -1,4 +1,4 @@
-module Sentry.Raven.Wrapper.Internal where
+module Sentry.Raven.Core.Internal where
 
 import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Uncurried (EffFn2, EffFn3, EffFn4, EffFn1)

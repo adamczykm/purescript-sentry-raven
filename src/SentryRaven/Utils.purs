@@ -13,7 +13,7 @@ import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Simple.JSON (class ReadForeign, read)
 
-import Sentry.Raven.Wrapper.Internal (RAVEN, Raven)
+import Sentry.Raven.Core.Internal (RAVEN, Raven)
 
 -- | Case analysis for the `Boolean` type
 bool ∷ ∀ a. a → a → Boolean → a

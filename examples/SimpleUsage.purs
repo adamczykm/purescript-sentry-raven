@@ -1,4 +1,4 @@
-module Main where
+module Example.SimpleUsage where
 
 import Prelude (class Eq, Unit, bind, const, discard, id, map, pure, unit, ($), (<$>), (<<<), (<>), (==), (>>=))
 

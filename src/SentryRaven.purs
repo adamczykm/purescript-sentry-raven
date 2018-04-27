@@ -1,7 +1,7 @@
 module Sentry.Raven
   ( module Sentry.Raven.Breadcrumb
   , module Sentry.Raven.Utils
-  , module Sentry.Raven.Wrapper
+  , module Sentry.Raven.Core
   ) where
 
 
@@ -21,7 +21,7 @@ import Sentry.Raven.Utils (
   RIx(..), readSub, parseForeignNested, parseForeignNested')
 
 
-import Sentry.Raven.Wrapper (
+import Sentry.Raven.Core (
   -- Internal reexport
   Raven, RAVEN,
   -- Raven context & lib initialization

@@ -1,6 +1,6 @@
-module Sentry.Raven.Wrapper
+module Sentry.Raven.Core
   -- Internal reexport
-  ( module Sentry.Raven.Wrapper.Internal
+  ( module Sentry.Raven.Core.Internal
   -- Raven context & lib initialization
   , Dsn(..), withRaven
   -- Event recording
@@ -26,8 +26,8 @@ import Data.Functor ((<$>))
 import Data.Record.Builder (build, merge)
 import Data.Unit (Unit, unit)
 import Partial.Unsafe (unsafePartial)
-import Sentry.Raven.Wrapper.Internal (Raven, RAVEN)
-import Sentry.Raven.Wrapper.Internal as I
+import Sentry.Raven.Core.Internal (Raven, RAVEN)
+import Sentry.Raven.Core.Internal as I
 import Simple.JSON (class ReadForeign, read, class WriteForeign, write)
 
 
