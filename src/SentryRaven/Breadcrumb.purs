@@ -1,6 +1,5 @@
 module Sentry.Raven.Breadcrumb where
 
-
 import Control.Category ((>>>))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Uncurried (runEffFn2)
@@ -19,9 +18,10 @@ import Sentry.Raven.Core.Internal (RAVEN, Raven, recordBreadcrumbImpl)
 import Simple.JSON (class ReadForeign, class WriteForeign, readImpl, write, writeImpl)
 
 
+-- | Represents possible levels of a breadcrumb (specified by Sentry API)
 data Level = Critical | Error | Warning | Info | Debug
 
-instance eqLevel :: Eq Level where
+instance eqLevel ∷ Eq Level where
   eq Critical Critical = true
   eq Error Error = true
   eq Warning Warning = true
@@ -38,17 +38,19 @@ instance writeForeignelInst ∷ WriteForeign Level where
 
 instance readForeignLevelInst ∷ ReadForeign Level where
   readImpl = readString >>> runExcept >>>  case _ of
-    Right "critical" -> except (Right Critical)
-    Right "error" -> except (Right Error)
-    Right "warning" -> except (Right Warning)
-    Right "info" -> except (Right Info)
-    Right "debug" -> except (Right Debug)
-    Right x -> except (Left (singleton (ForeignError $ "Can't parse value of type Level from " <> x)))
-    Left e -> except (Left e)
+    Right "critical" → except (Right Critical)
+    Right "error" → except (Right Error)
+    Right "warning" → except (Right Warning)
+    Right "info" → except (Right Info)
+    Right "debug" → except (Right Debug)
+    Right x → except (Left (singleton (ForeignError $ "Can't parse value of type Level from " <> x)))
+    Left e → except (Left e)
 
+
+-- | Represents possible types of a breadcrumb with special treatment from Sentry API
 data Type = Default | Http | Navigation
 
-instance eqType :: Eq Type where
+instance eqType ∷ Eq Type where
   eq Default Default = true
   eq Http Http = true
   eq Navigation Navigation = true
@@ -61,28 +63,39 @@ instance writeForeignTypeInst ∷ WriteForeign Type where
 
 instance readForeignTypeInst ∷ ReadForeign Type where
   readImpl = readString >>> runExcept >>>  case _ of
-    Right "default" -> except (Right Default)
-    Right "http" -> except (Right Http)
-    Right "navigation" -> except (Right Navigation)
-    Right x -> except (Left (singleton (ForeignError $ "Can't parse value of type Type from " <> x)))
-    Left e -> except (Left e)
+    Right "default" → except (Right Default)
+    Right "http" → except (Right Http)
+    Right "navigation" → except (Right Navigation)
+    Right x → except (Left (singleton (ForeignError $ "Can't parse value of type Type from " <> x)))
+    Left e → except (Left e)
 
+
+-- | Restricted record for aggregating breadcrumb data supported by Sentry API
 type BreadcrumbT a = {
-  message :: NullOrUndefined String,
-  category :: a,
-  type :: NullOrUndefined Type,
-  level :: NullOrUndefined Level,
-  data :: NullOrUndefined Foreign}
+  message ∷ NullOrUndefined String,
+  category ∷ a,
+  type ∷ NullOrUndefined Type,
+  level ∷ NullOrUndefined Level,
+  data ∷ NullOrUndefined Foreign}
 
+-- | Breadcrumb type aggregating breadcrumb data supported by Sentry API
 newtype Breadcrumb a = Breadcrumb (BreadcrumbT a)
 
-instance rfBreadcrumb :: ReadForeign a => ReadForeign (Breadcrumb a) where
+instance rfBreadcrumb ∷ ReadForeign a ⇒ ReadForeign (Breadcrumb a) where
    readImpl = readImpl >>> runExcept >>> map Breadcrumb >>> except
 
-instance wfBreadcrumb :: WriteForeign a => WriteForeign (Breadcrumb a) where
+instance wfBreadcrumb ∷ WriteForeign a ⇒ WriteForeign (Breadcrumb a) where
    writeImpl (Breadcrumb b) = writeImpl b
 
-breadcrumb :: forall a. a -> (BreadcrumbT a -> BreadcrumbT a) -> Breadcrumb a
+
+{- | Allows for convenient creation of a restricted breadcrumb.
+     Example:
+
+@
+  'breadcrumb' "cat" ( _ {message = d "msg", type = d Navigation, level = d Info})
+@
+-}
+breadcrumb ∷ ∀ a. a → (BreadcrumbT a → BreadcrumbT a) → Breadcrumb a
 breadcrumb cat mod = Breadcrumb $ mod {
   message : NullOrUndefined Nothing,
   category : cat,
@@ -90,9 +103,14 @@ breadcrumb cat mod = Breadcrumb $ mod {
   level : NullOrUndefined Nothing,
   data : NullOrUndefined Nothing}
 
-recordBreadcrumb' ∷ ∀ h ctx eff a
-                 . WriteForeign a
-                 ⇒ Raven h ctx
-                 → Breadcrumb a
-                 → Eff (raven ∷ RAVEN h | eff) Unit
+-- | Adds a breadcrumb to the current context.
+-- | Notice that replacing context will cause recorded breadcrumbs to be dropped.
+-- | You may also want to use 'recordBreadcrumb' from 'Sentry.Raven.Core' for
+-- | non-restricted version of this function.
+recordBreadcrumb' ∷
+  ∀ h ctx eff a
+  . WriteForeign a
+  ⇒ Raven h ctx
+  → Breadcrumb a
+  → Eff (raven ∷ RAVEN h | eff) Unit
 recordBreadcrumb' r bc = runEffFn2 recordBreadcrumbImpl r (write bc)

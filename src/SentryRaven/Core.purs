@@ -74,11 +74,12 @@ captureMessage r msg extra = runEffFn3 I.captureMessageImpl r (write msg) (write
 
 -- | Adds a breadcrumb to the current context.
 -- | Notice that replacing context will cause recorded breadcrumbs to be dropped.
--- | You may also want to use recordBreadcrumb' for type-restricted version of this function
+-- | You may also want to use 'recordBreadcrumb'' from 'Sentry.Raven.Breadcrumb'
+-- | for type-restricted version of this function.
 recordBreadcrumb ∷ ∀ h ctx eff r a
-                 . WriteForeign {category :: a | r}
+                 . WriteForeign {category ∷ a | r}
                  ⇒ Raven h ctx
-                 → {category :: a | r}
+                 → {category ∷ a | r}
                  → Eff (raven ∷ RAVEN h | eff) Unit
 recordBreadcrumb r bc = runEffFn2 I.recordBreadcrumbImpl r (write bc)
 
@@ -89,12 +90,12 @@ getContext ∷
   ⇒ Raven h ctx
   → Eff (raven ∷ RAVEN h | eff) ctx
 getContext r = do
-  ctx <- runEffFn1 I.getContextImpl r
+  ctx ← runEffFn1 I.getContextImpl r
   pure $ unsafePartial fromRight (runExcept (read ctx))
 
 
 -- | Sets current Raven context. Notice that if you want to change the type
--- | of the context you should use `withNewContext` function.
+-- | of the context you should use 'withNewContext' function.
 setContext ∷
   ∀ h ctx eff
   . WriteForeign ctx
@@ -104,7 +105,7 @@ setContext ∷
 setContext r ctx = runEffFn2 I.setContextImpl r (write ctx)
 
 -- | Modifies current Raven context. Notice that if you want to change the type
--- | of the context you should use `withChangedContext` function.
+-- | of the context you should use 'withChangedContext' function.
 modifyContext ∷
   ∀ h ctx eff
   . WriteForeign ctx
@@ -136,139 +137,139 @@ withChangedContext ∷
   → (∀ h'. Raven h' ctx' → Eff (raven ∷ RAVEN h' | eff) a)
   → Eff (raven ∷ RAVEN h | eff) a
 withChangedContext r f action = do
-  orig <- getContext r
-  ret <- runEffFn3 I.withNewCtxImpl r (f orig) action
+  orig ← getContext r
+  ret ← runEffFn3 I.withNewCtxImpl r (f orig) action
   setContext r orig
   pure ret
 
 -- | Adds given set of tags to the context and runs given effect within
 -- | a scope of it.
 -- | May change the type of the context.
-withAddedTags ::
+withAddedTags ∷
   ∀ h ctx eff t1 t2 t3 a
   . Union t2 t1 t3
-  ⇒ WriteForeign { tags :: { | t1 } | ctx}
-  ⇒ ReadForeign { tags :: { | t1 } | ctx}
-  ⇒ Raven h { tags :: { | t1 } | ctx}
+  ⇒ WriteForeign { tags ∷ { | t1 } | ctx}
+  ⇒ ReadForeign { tags ∷ { | t1 } | ctx}
+  ⇒ Raven h { tags ∷ { | t1 } | ctx}
   → { | t2 }
-  → (∀ h'. Raven h' { tags :: { | t3 } | ctx} -> Eff ( raven :: RAVEN h' | eff) a)
-  → Eff ( raven :: RAVEN h | eff) a
+  → (∀ h'. Raven h' { tags ∷ { | t3 } | ctx} → Eff ( raven ∷ RAVEN h' | eff) a)
+  → Eff ( raven ∷ RAVEN h | eff) a
 withAddedTags r tags action = do
-  orig <- getContext r
+  orig ← getContext r
   let newCtx = orig { tags = build (merge orig.tags) tags}
-  ret <- runEffFn3 I.withNewCtxImpl r newCtx action
+  ret ← runEffFn3 I.withNewCtxImpl r newCtx action
   setContext r orig
   pure ret
 
 -- | Runs given effect within a scope of additional extra context.
 -- | May change the type of the context.
-withAddedExtraContext ::
+withAddedExtraContext ∷
   ∀ h ctx eff t1 t2 t3 a
   . Union t2 t1 t3
-  ⇒ WriteForeign { extra :: { | t1 } | ctx}
-  ⇒ ReadForeign { extra :: { | t1 } | ctx}
-  ⇒ Raven h { extra :: { | t1 } | ctx}
+  ⇒ WriteForeign { extra ∷ { | t1 } | ctx}
+  ⇒ ReadForeign { extra ∷ { | t1 } | ctx}
+  ⇒ Raven h { extra ∷ { | t1 } | ctx}
   → { | t2 }
-  → (∀ h'. Raven h' { extra :: { | t3 } | ctx} -> Eff ( raven :: RAVEN h' | eff) a)
-  → Eff ( raven :: RAVEN h | eff) a
+  → (∀ h'. Raven h' { extra ∷ { | t3 } | ctx} → Eff ( raven ∷ RAVEN h' | eff) a)
+  → Eff ( raven ∷ RAVEN h | eff) a
 withAddedExtraContext  r extra action = do
-  orig <- getContext r
+  orig ← getContext r
   let newCtx = orig { extra = build (merge orig.extra) extra}
-  ret <- runEffFn3 I.withNewCtxImpl r newCtx action
+  ret ← runEffFn3 I.withNewCtxImpl r newCtx action
   setContext r orig
   pure ret
 
 -- | Runs given effect with new user context.
 -- | May change the type of the context.
-withUser ::
+withUser ∷
   ∀ h ctx eff t1 t2 a
-  . WriteForeign { user :: t1 | ctx}
-  ⇒ ReadForeign { user :: t1 | ctx}
-  ⇒ Raven h { user :: t1 | ctx}
+  . WriteForeign { user ∷ t1 | ctx}
+  ⇒ ReadForeign { user ∷ t1 | ctx}
+  ⇒ Raven h { user ∷ t1 | ctx}
   → t2
-  → (∀ h'. Raven h' { user :: t2 | ctx} -> Eff ( raven :: RAVEN h' | eff) a)
-  → Eff ( raven :: RAVEN h | eff) a
+  → (∀ h'. Raven h' { user ∷ t2 | ctx} → Eff ( raven ∷ RAVEN h' | eff) a)
+  → Eff ( raven ∷ RAVEN h | eff) a
 withUser r user action = do
-  orig <- getContext r
+  orig ← getContext r
   let newCtx = orig { user = user}
-  ret <- runEffFn3 I.withNewCtxImpl r newCtx action
+  ret ← runEffFn3 I.withNewCtxImpl r newCtx action
   setContext r orig
   pure ret
 
 -- | Replaces set of tags in the current Raven context.
-setTags ::
+setTags ∷
   ∀ h ctx eff t1
-  . WriteForeign { tags :: t1 | ctx}
-  ⇒ ReadForeign { tags :: t1 | ctx}
-  ⇒ Raven h { tags :: t1 | ctx}
+  . WriteForeign { tags ∷ t1 | ctx}
+  ⇒ ReadForeign { tags ∷ t1 | ctx}
+  ⇒ Raven h { tags ∷ t1 | ctx}
   → t1
-  → Eff ( raven :: RAVEN h | eff) Unit
+  → Eff ( raven ∷ RAVEN h | eff) Unit
 setTags r tags = do
-  orig <- getContext r
+  orig ← getContext r
   setContext r (orig { tags = tags})
   pure unit
 
 -- | Modifies set of tags in the current Raven context.
-modifyTags ::
+modifyTags ∷
   ∀ h ctx eff t1
-  . WriteForeign{ tags :: t1 | ctx}
-  ⇒ ReadForeign{ tags :: t1 | ctx}
-  ⇒ Raven h { tags :: t1 | ctx}
-  → (t1 -> t1)
-  → Eff ( raven :: RAVEN h | eff) Unit
+  . WriteForeign{ tags ∷ t1 | ctx}
+  ⇒ ReadForeign{ tags ∷ t1 | ctx}
+  ⇒ Raven h { tags ∷ t1 | ctx}
+  → (t1 → t1)
+  → Eff ( raven ∷ RAVEN h | eff) Unit
 modifyTags r f = do
-  orig <- getContext r
+  orig ← getContext r
   setContext r (orig { tags = (f orig.tags)})
   pure unit
 
 -- | Replaces set user in the current Raven context.
-setUser ::
+setUser ∷
   ∀ h ctx eff t1
-  . WriteForeign { user :: t1 | ctx}
-  ⇒ ReadForeign { user :: t1 | ctx}
-  ⇒ Raven h { user :: t1 | ctx}
+  . WriteForeign { user ∷ t1 | ctx}
+  ⇒ ReadForeign { user ∷ t1 | ctx}
+  ⇒ Raven h { user ∷ t1 | ctx}
   → t1
-  → Eff ( raven :: RAVEN h | eff) Unit
+  → Eff ( raven ∷ RAVEN h | eff) Unit
 setUser r user = do
-  orig <- getContext r
+  orig ← getContext r
   setContext r (orig { user = user})
   pure unit
 
 -- | Modifies set user in the current Raven context.
-modifyUser ::
+modifyUser ∷
   ∀ h ctx eff t1
-  . WriteForeign { user :: t1 | ctx}
-  ⇒ ReadForeign { user :: t1 | ctx}
-  ⇒ Raven h { user :: t1 | ctx}
-  → (t1 -> t1)
-  → Eff ( raven :: RAVEN h | eff) Unit
+  . WriteForeign { user ∷ t1 | ctx}
+  ⇒ ReadForeign { user ∷ t1 | ctx}
+  ⇒ Raven h { user ∷ t1 | ctx}
+  → (t1 → t1)
+  → Eff ( raven ∷ RAVEN h | eff) Unit
 modifyUser r f = do
-  orig <- getContext r
+  orig ← getContext r
   setContext r (orig { user = (f orig.user)})
   pure unit
 
 -- | Replaces extra context data in the current Raven context.
-setExtraContext ::
+setExtraContext ∷
   ∀ h ctx eff t1
-  . WriteForeign { extra :: t1 | ctx}
-  ⇒ ReadForeign { extra :: t1 | ctx}
-  ⇒ Raven h { extra :: t1 | ctx}
+  . WriteForeign { extra ∷ t1 | ctx}
+  ⇒ ReadForeign { extra ∷ t1 | ctx}
+  ⇒ Raven h { extra ∷ t1 | ctx}
   → t1
-  → Eff ( raven :: RAVEN h | eff) Unit
+  → Eff ( raven ∷ RAVEN h | eff) Unit
 setExtraContext r extra = do
-  orig <- getContext r
+  orig ← getContext r
   setContext r (orig { extra = extra})
   pure unit
 
 -- | Modifies extra context data in the current Raven context.
-modifyExtraContext ::
+modifyExtraContext ∷
   ∀ h ctx eff t1
-  . WriteForeign { extra :: t1 | ctx}
-  ⇒ ReadForeign { extra :: t1 | ctx}
-  ⇒ Raven h { extra :: t1 | ctx}
-  → (t1 -> t1)
-  → Eff ( raven :: RAVEN h | eff) Unit
+  . WriteForeign { extra ∷ t1 | ctx}
+  ⇒ ReadForeign { extra ∷ t1 | ctx}
+  ⇒ Raven h { extra ∷ t1 | ctx}
+  → (t1 → t1)
+  → Eff ( raven ∷ RAVEN h | eff) Unit
 modifyExtraContext r f = do
-  orig <- getContext r
+  orig ← getContext r
   setContext r (orig { extra = (f orig.extra)})
   pure unit

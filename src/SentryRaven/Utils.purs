@@ -15,7 +15,7 @@ import Simple.JSON (class ReadForeign, read)
 
 import Sentry.Raven.Core.Internal (RAVEN, Raven)
 
--- | Case analysis for the `Boolean` type
+-- | Case analysis for the 'Boolean' type
 bool ∷ ∀ a. a → a → Boolean → a
 bool a b c = if c then b else a
 
@@ -40,7 +40,7 @@ type RavenFun2 eff ctx i0 i1 o = ∀ h. Raven h ctx → i0 → i1 → Eff (raven
 data RIx = IxP String | IxI Int
 
 -- | Reads foreign object subobject at given path
-readSub :: RIx -> Foreign -> F Foreign
+readSub ∷ RIx → Foreign → F Foreign
 readSub = case _ of
   IxP str → readProp str
   IxI i → readIndex i

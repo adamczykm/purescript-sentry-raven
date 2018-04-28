@@ -36,7 +36,7 @@ requestOutputTest
 requestOutputTest dsn opts ctx timeout validateResult validateSentryRequest action = do
   sentryRequestVar ← makeEmptyVar
   ret ← liftEff $ withRaven dsn
-                  (insert (SProxy :: SProxy "dataCallback")
+                  (insert (SProxy ∷ SProxy "dataCallback")
                           (updateWithGeneratedRequest sentryRequestVar)
                           opts)
                   ctx

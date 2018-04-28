@@ -34,7 +34,7 @@ instance writeForeignCategoryInst ∷ WriteForeign Category where
   writeImpl UI = writeImpl "UI"
 
 
-main ∷ ∀ e. Eff (process :: PROCESS, avar ∷ AVAR, console ∷ CONSOLE | e) Unit
+main ∷ ∀ e. Eff (process ∷ PROCESS, avar ∷ AVAR, console ∷ CONSOLE | e) Unit
 main = launchAff_ do
 
   -- -------------- test
@@ -50,19 +50,19 @@ main = launchAff_ do
   _ ← printTestSimple "test2" $ test {extra: {contexts: {os: {name: "GNU/Linux"}}}, tags: {x: 1}, user: {id: 1}} validateBreadCrumbs (\rt → do
         recordBreadcrumb' rt brdcrmb
         captureMessage rt "test message 20" {}
-        ctx <- getContext rt
+        ctx ← getContext rt
         traceAnyA ctx )
 
-  _ <- liftEff (do
+  _ ← liftEff (do
       dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN"
 
       ret ← withRaven dsn {} { user : {id : 1}, tags : {}, extra : {a:1} } ( \r'' →
-        withAddedTags r'' {tag1 : 1, tag2 : "2"} (\r' -> do
-          withUser r' {id: 1, email: "pure@script.org"} (\r3 -> do
-            withAddedExtraContext r3 {b:2} (\r -> do
+        withAddedTags r'' {tag1 : 1, tag2 : "2"} (\r' → do
+          withUser r' {id: 1, email: "pure@script.org"} (\r3 → do
+            withAddedExtraContext r3 {b:2} (\r → do
               recordBreadcrumb' r brdcrmb
               captureMessage r "st message2" {}
-              ctx <- getContext r
+              ctx ← getContext r
               traceAnyA ctx
             ))))
 
@@ -86,12 +86,12 @@ main = launchAff_ do
          → Aff (avar ∷ AVAR | eff) Boolean
     test ctx validate action = requestOutputTest (Dsn "") {} ctx (Milliseconds 1500.0) (const true) validate action
 
-    traceContext ∷ ∀ ctx eff. ReadForeign ctx => RavenFun1 (console ∷ CONSOLE | eff) ctx String Unit
+    traceContext ∷ ∀ ctx eff. ReadForeign ctx ⇒ RavenFun1 (console ∷ CONSOLE | eff) ctx String Unit
     traceContext r name = (do
-      ctx <- getContext r
+      ctx ← getContext r
       traceAnyA name
       traceAnyA ctx)
 
-    -- | Case analysis for the `Boolean` type
-    bool :: forall a. a -> a -> Boolean -> a
+    -- | Case analysis for the 'Boolean' type
+    bool ∷ forall a. a → a → Boolean → a
     bool a b c = if c then b else a
