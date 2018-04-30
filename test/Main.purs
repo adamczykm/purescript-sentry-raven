@@ -1,18 +1,20 @@
 module Test.Main where
 
-import Control.Applicative (pure)
+import Control.Alternative ((<|>))
+import Control.Applicative (pure, (*>))
 import Control.Bind (bind)
-import Control.Category (id, (<<<))
+import Control.Category (id, (<<<), (>>>))
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE)
-import Data.Eq (class Eq, (/=), (==))
+import Data.Eq (class Eq, (==))
 import Data.Foreign (Foreign)
 import Data.HeytingAlgebra (not, (&&))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..), maybe)
 import Prelude (Unit, const, ($), (>>=), discard)
-import Sentry.Raven (RIx(..), captureException, captureMessage, getContext, modifyUser, parseForeignNested', recordBreadcrumb, setUser, withAddedTags)
+import Sentry.Raven (RIx(..), captureException, captureMessage, getContext, modifyUser, parseForeignNested', recordBreadcrumb, recordBreadcrumb', setContext, setUser, withAddedTags, withNewContext)
+import Sentry.Raven.Breadcrumb (Breadcrumb', breadcrumb')
 import Simple.JSON (class ReadForeign, class WriteForeign)
 import Test.TestUtils (testRaven)
 import Test.Unit (suite, test)
@@ -47,6 +49,7 @@ main = runTest do
       (\r → do
         captureException r "testError" {})
 
+  ----------------------------------------------------------------------
   suite "Context simple" do
 
     let userCtx =
@@ -97,7 +100,6 @@ main = runTest do
         modifyUser r (const userCtx2)
         captureMessage r "testMsg" {})
 
-
     let
       verifyTags ∷ String → String → (Maybe Foreign) → Boolean
       verifyTags tagK tagV me = maybeBoolean do
@@ -112,6 +114,35 @@ main = runTest do
         ctx ← getContext rt
         pure $ ctx.tags.tagKey == "tagValue"))
 
+  ----------------------------------------------------------------------
+  suite "Droppping breadcrumbs" do
+
+    let noBreadcrumbs = Just ([] ∷ Array (Breadcrumb' String))
+        testbrdc = breadcrumb' "test" id
+        getBreadcrumbs ∷ ∀ a. ReadForeign a ⇒ Maybe Foreign → Maybe a
+        getBreadcrumbs me = do
+          e ← me
+          parseForeignNested' (IxP "breadcrumbs" : Nil) e <|>
+              parseForeignNested' (IxP "breadcrumbs" : IxP "values" : Nil) e
+
+    testAssert "setContext does not drop breadcrumbs" $
+      testRaven {user: {id: 1}} Nothing (getBreadcrumbs >>> (Just [testbrdc, testbrdc] == _))
+      (\r → do
+          recordBreadcrumb' r testbrdc
+          setContext r {user: {id: 2}}
+          recordBreadcrumb' r testbrdc
+          ctx ← getContext r
+          captureMessage r "testMsg" {})
+
+    testAssert "withNewContext does not drop breadcrumbs" $
+      testRaven {} Nothing (getBreadcrumbs >>> (Just [testbrdc, testbrdc] == _))
+      (\r → recordBreadcrumb' r testbrdc *>
+            withNewContext r {user:{id:1}}
+        (\rt → do
+          ctx ← getContext rt
+          setContext rt {user: {id: 2}}
+          recordBreadcrumb' rt testbrdc
+          captureMessage rt "testMsg" {}))
 
   where
 

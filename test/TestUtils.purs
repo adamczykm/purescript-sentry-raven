@@ -17,7 +17,6 @@ import Data.Maybe (Maybe, maybe)
 import Data.Record (insert)
 import Data.Symbol (SProxy(..))
 import Data.Time.Duration (Milliseconds(..))
-import Debug.Trace (traceAnyA)
 import Sentry.Raven (Dsn(..))
 import Sentry.Raven.Core (Dsn, withRaven)
 import Sentry.Raven.Core.Internal (RAVEN, Raven)
@@ -62,4 +61,4 @@ requestOutputTest dsn opts ctx timeout validateResult validateSentryRequest acti
     else delay timeout *> (validateSentryRequest <$> tryTakeVar sentryRequestVar)
 
   where
-    updateWithGeneratedRequest avar = (mkEffFn1 (\x → launchAff_ (putVar x avar) *> traceAnyA x *> pure x))
+    updateWithGeneratedRequest avar = (mkEffFn1 (\x → launchAff_ (putVar x avar) *> pure x))
