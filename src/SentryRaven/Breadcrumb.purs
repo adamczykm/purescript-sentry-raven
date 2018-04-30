@@ -5,14 +5,17 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Uncurried (runEffFn2)
 import Control.Monad.Except (except, runExcept)
 import Data.Either (Either(..))
-import Data.Eq (class Eq)
-import Data.Foreign (Foreign, ForeignError(ForeignError), readString)
+import Data.Eq (class Eq, (==))
+import Data.Foreign (ForeignError(ForeignError), readString)
 import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
-import Data.Function (($))
+import Data.Function (const, ($))
 import Data.Functor (map)
+import Data.HeytingAlgebra ((&&))
 import Data.List.NonEmpty (singleton)
 import Data.Maybe (Maybe(..))
+import Data.Ord (class Ord, Ordering(..))
 import Data.Semigroup ((<>))
+import Data.Show (class Show)
 import Data.Unit (Unit)
 import Sentry.Raven.Core.Internal (RAVEN, Raven, recordBreadcrumbImpl)
 import Simple.JSON (class ReadForeign, class WriteForeign, readImpl, write, writeImpl)
@@ -71,20 +74,50 @@ instance readForeignTypeInst ∷ ReadForeign Type where
 
 
 -- | Restricted record for aggregating breadcrumb data supported by Sentry API
-type BreadcrumbT a = {
+type BreadcrumbT a d = {
   message ∷ NullOrUndefined String,
   category ∷ a,
   type ∷ NullOrUndefined Type,
   level ∷ NullOrUndefined Level,
-  data ∷ NullOrUndefined Foreign}
+  data ∷ NullOrUndefined d}
 
 -- | Breadcrumb type aggregating breadcrumb data supported by Sentry API
-newtype Breadcrumb a = Breadcrumb (BreadcrumbT a)
+newtype Breadcrumb a d = Breadcrumb (BreadcrumbT a d)
 
-instance rfBreadcrumb ∷ ReadForeign a ⇒ ReadForeign (Breadcrumb a) where
+-- | Newtype represeting lack of data and providing necessary instances.
+data X = X
+
+instance eqX ∷ Eq X where
+  eq x = const true
+
+instance ordX ∷ Ord X where
+  compare _  = const EQ
+
+instance showX ∷ Show X where
+  show = const "X"
+
+instance wfX ∷ WriteForeign X where
+   writeImpl X = writeImpl (NullOrUndefined (Nothing ∷ Maybe Int))
+
+instance rfX ∷ ReadForeign X where
+   readImpl = const $ except (Right X)
+
+
+-- | Breadcrumb type with no associated data
+type Breadcrumb' a = Breadcrumb a X
+
+instance eqBreadcrumbImpl ∷ (Eq a, Eq d) ⇒ Eq (Breadcrumb a d) where
+  eq (Breadcrumb a) (Breadcrumb b) =
+    a.category == b.category &&
+    a.message == b.message &&
+    a.type == b.type &&
+    a.data == b.data &&
+    a.level == b.level
+
+instance rfBreadcrumb ∷ (ReadForeign a, ReadForeign d) ⇒ ReadForeign (Breadcrumb a d) where
    readImpl = readImpl >>> runExcept >>> map Breadcrumb >>> except
 
-instance wfBreadcrumb ∷ WriteForeign a ⇒ WriteForeign (Breadcrumb a) where
+instance wfBreadcrumb ∷ (WriteForeign a, WriteForeign d) ⇒ WriteForeign (Breadcrumb a d) where
    writeImpl (Breadcrumb b) = writeImpl b
 
 
@@ -95,8 +128,23 @@ instance wfBreadcrumb ∷ WriteForeign a ⇒ WriteForeign (Breadcrumb a) where
   'breadcrumb' "cat" ( _ {message = d "msg", type = d Navigation, level = d Info})
 @
 -}
-breadcrumb ∷ ∀ a. a → (BreadcrumbT a → BreadcrumbT a) → Breadcrumb a
+breadcrumb ∷ ∀ a d. a → (BreadcrumbT a d → BreadcrumbT a d) → Breadcrumb a d
 breadcrumb cat mod = Breadcrumb $ mod {
+  message : NullOrUndefined Nothing,
+  category : cat,
+  type : NullOrUndefined Nothing,
+  level : NullOrUndefined Nothing,
+  data : NullOrUndefined Nothing}
+
+{- | Allows for convenient creation of a restricted breadcrumb without carrying additional data.
+     Example:
+
+@
+  'breadcrumb' "cat" ( _ {message = d "msg", type = d Navigation, level = d Info})
+@
+-}
+breadcrumb' ∷ ∀ a. a → (BreadcrumbT a X → BreadcrumbT a X) → Breadcrumb a X
+breadcrumb' cat mod = Breadcrumb $ mod {
   message : NullOrUndefined Nothing,
   category : cat,
   type : NullOrUndefined Nothing,
@@ -108,9 +156,10 @@ breadcrumb cat mod = Breadcrumb $ mod {
 -- | You may also want to use 'recordBreadcrumb' from 'Sentry.Raven.Core' for
 -- | non-restricted version of this function.
 recordBreadcrumb' ∷
-  ∀ h ctx eff a
+  ∀ h ctx eff a d
   . WriteForeign a
+  ⇒ WriteForeign d
   ⇒ Raven h ctx
-  → Breadcrumb a
+  → Breadcrumb a d
   → Eff (raven ∷ RAVEN h | eff) Unit
 recordBreadcrumb' r bc = runEffFn2 recordBreadcrumbImpl r (write bc)

@@ -6,7 +6,7 @@ module Sentry.Raven
 
 
 import Sentry.Raven.Breadcrumb (
-  Level, Type, BreadcrumbT, Breadcrumb,
+  X(..), Level(..), Type(..), BreadcrumbT, Breadcrumb', Breadcrumb(..),
   breadcrumb, recordBreadcrumb')
 
 
