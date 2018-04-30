@@ -82,11 +82,11 @@ main = runTest do
                 pure $ ctx.user == userCtx)
       Assert.assert "user context works" ret
 
-      ret ← testRaven {custom : userCtx} (Just id) (const true)
+      ret' ← testRaven {custom : userCtx} (Just id) (const true)
               (\r → do
                 ctx ← getContext r
                 pure $ ctx.custom == userCtx)
-      Assert.assert "custom context works" ret
+      Assert.assert "custom context works" ret'
 
     testAssert "Set user context works as expected" $
       testRaven {user : userCtx} Nothing (verifyUserContext userCtx2)
