@@ -84,12 +84,12 @@ main = do
 
 Sentry supports additional context with events. Often this context is shared amongst any issue captured in its lifecycle, and includes the following components:
 
-Tags
-    Key/value pairs which generate breakdowns charts and search filters
-User
-    Information about the current actor
-Extra
-    Arbitrary unstructured data which is stored with an event sample 
+Tags  
+    Key/value pairs which generate breakdowns charts and search filters  
+User  
+    Information about the current actor  
+Extra  
+    Arbitrary unstructured data which is stored with an event sample  
 
 Context is a part of Raven type and thus changing its type would change the type of Raven scope. This is supported with dedicated functions such as `withUser`:
 
