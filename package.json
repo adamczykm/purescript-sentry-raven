@@ -1,6 +1,6 @@
 {
   "name": "purescript-sentry-raven",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Purescript wrapper for Raven - Sentry SDK for Javascript",
 
   "dependencies": {
