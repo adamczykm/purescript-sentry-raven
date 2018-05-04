@@ -13,8 +13,6 @@ import Sentry.Raven.Breadcrumb (
 import Sentry.Raven.Utils (
   -- common combinators
   bool,
-  --  useful abbrevations
-  undefined, d,
   -- type aliases
   RavenFun0, RavenFun1, RavenFun2,
   -- nested foreign parsing

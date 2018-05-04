@@ -7,25 +7,16 @@ import Control.Monad.Except (runExcept)
 import Data.Either (either)
 import Data.Foreign (Foreign, F)
 import Data.Foreign.Index (readIndex, readProp)
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Function (const)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
-import Simple.JSON (class ReadForeign, read)
-
 import Sentry.Raven.Core.Internal (RAVEN, Raven)
+import Simple.JSON (class ReadForeign, read')
 
 -- | Case analysis for the 'Boolean' type
 bool ∷ ∀ a. a → a → Boolean → a
 bool a b c = if c then b else a
 
--- | Useful shortcut for defining values that can be undefined.
-undefined ∷ ∀ a. NullOrUndefined a
-undefined = NullOrUndefined Nothing
-
--- | Useful shortcut for defining values that can be undefined.
-d ∷ ∀ a. a → NullOrUndefined a
-d a = NullOrUndefined (Just a)
 
 -- | Useful alias for explicit type annotations.
 type RavenFun0 eff ctx o = ∀ h. Raven h ctx → Eff (raven ∷ RAVEN h | eff) o
@@ -47,7 +38,7 @@ readSub = case _ of
 
 -- | Allows for convenient parsing of nested subobjects
 parseForeignNested ∷ ∀ a. ReadForeign a ⇒ List RIx → Foreign → F a
-parseForeignNested Nil frgn = read frgn
+parseForeignNested Nil frgn = read' frgn
 parseForeignNested (Cons p ps) frgn = readSub p frgn >>= parseForeignNested ps
 
 -- | Allows for convenient parsing of nested subobjects. Discards errors.
