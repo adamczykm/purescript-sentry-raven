@@ -8,7 +8,6 @@ import Control.Monad.Eff (Eff, kind Effect)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Data.Foreign (Foreign)
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.List (List(..), (:))
 import Data.Maybe (maybe, Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
@@ -72,8 +71,7 @@ main = launchAff_ do
   pure unit
 
   where
-    d ∷ ∀ a. a → NullOrUndefined a
-    d a = NullOrUndefined (Just a)
+    j = Just
 
     printTestSimple name res = map (bool ("Test " <> name <> " has failed!") ("Test " <> name <> " Ok!")) res >>= (liftEff <<< log)
 

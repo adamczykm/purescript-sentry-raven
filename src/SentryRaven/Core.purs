@@ -18,7 +18,6 @@ import Control.Applicative (pure)
 import Control.Bind (bind, (>>=), discard)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Uncurried (runEffFn1, runEffFn2, runEffFn3, runEffFn4)
-import Control.Monad.Except (runExcept)
 import Data.Either (fromRight)
 import Data.Function (const, ($))
 import Data.Functor ((<$>))
@@ -91,7 +90,7 @@ getContext ∷
   → Eff (raven ∷ RAVEN h | eff) ctx
 getContext r = do
   ctx ← runEffFn1 I.getContextImpl r
-  pure $ unsafePartial fromRight (runExcept (read ctx))
+  pure $ unsafePartial fromRight (read ctx)
 
 
 -- | Sets current Raven context. Notice that if you want to change the type

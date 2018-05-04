@@ -7,7 +7,6 @@ import Control.Monad.Except (except, runExcept)
 import Data.Either (Either(..))
 import Data.Eq (class Eq, (==))
 import Data.Foreign (ForeignError(ForeignError), readString)
-import Data.Foreign.NullOrUndefined (NullOrUndefined(..))
 import Data.Function (const, ($))
 import Data.Functor (map)
 import Data.HeytingAlgebra ((&&))
@@ -75,11 +74,11 @@ instance readForeignTypeInst ∷ ReadForeign Type where
 
 -- | Restricted record for aggregating breadcrumb data supported by Sentry API
 type BreadcrumbT a d = {
-  message ∷ NullOrUndefined String,
+  message ∷ Maybe String,
   category ∷ a,
-  type ∷ NullOrUndefined Type,
-  level ∷ NullOrUndefined Level,
-  data ∷ NullOrUndefined d}
+  type ∷ Maybe Type,
+  level ∷ Maybe Level,
+  data ∷ Maybe d}
 
 -- | Breadcrumb type aggregating breadcrumb data supported by Sentry API
 newtype Breadcrumb a d = Breadcrumb (BreadcrumbT a d)
@@ -97,10 +96,10 @@ instance showX ∷ Show X where
   show = const "X"
 
 instance wfX ∷ WriteForeign X where
-   writeImpl X = writeImpl (NullOrUndefined (Nothing ∷ Maybe Int))
+  writeImpl X = writeImpl (Nothing ∷ Maybe Int)
 
 instance rfX ∷ ReadForeign X where
-   readImpl = const $ except (Right X)
+  readImpl = const $ except (Right X)
 
 
 -- | Breadcrumb type with no associated data
@@ -130,11 +129,11 @@ instance wfBreadcrumb ∷ (WriteForeign a, WriteForeign d) ⇒ WriteForeign (Bre
 -}
 breadcrumb ∷ ∀ a d. a → (BreadcrumbT a d → BreadcrumbT a d) → Breadcrumb a d
 breadcrumb cat mod = Breadcrumb $ mod {
-  message : NullOrUndefined Nothing,
+  message : Nothing,
   category : cat,
-  type : NullOrUndefined Nothing,
-  level : NullOrUndefined Nothing,
-  data : NullOrUndefined Nothing}
+  type : Nothing,
+  level : Nothing,
+  data : Nothing}
 
 {- | Allows for convenient creation of a restricted breadcrumb without carrying additional data.
      Example:
@@ -145,11 +144,11 @@ breadcrumb cat mod = Breadcrumb $ mod {
 -}
 breadcrumb' ∷ ∀ a. a → (BreadcrumbT a X → BreadcrumbT a X) → Breadcrumb a X
 breadcrumb' cat mod = Breadcrumb $ mod {
-  message : NullOrUndefined Nothing,
+  message : Nothing,
   category : cat,
-  type : NullOrUndefined Nothing,
-  level : NullOrUndefined Nothing,
-  data : NullOrUndefined Nothing}
+  type : Nothing,
+  level : Nothing,
+  data : Nothing}
 
 -- | Adds a breadcrumb to the current context.
 -- | Notice that replacing context will cause recorded breadcrumbs to be dropped.
