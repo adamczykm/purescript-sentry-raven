@@ -14,6 +14,10 @@
     "tracking"
   ],
   "homepage": "https://github.com/adamczykm/purescript-sentry-raven",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamczykm/purescript-sentry-raven.git"
+  },
   "ignore": [
     "**/.*",
     "node_modules",
