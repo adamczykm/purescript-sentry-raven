@@ -1,0 +1,11 @@
+
+* 0.1.1
+
+Changes:
+- Fix readme issues
+- Add changelog
+
+* 0.1.0
+
+Initial release. 
+- Library supports most of underlying raven-node functions
