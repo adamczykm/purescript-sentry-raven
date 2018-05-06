@@ -2,9 +2,6 @@
 
 Purescript client library for [`Sentry.io`](http://sentry.io) wrapping Javascript client - Raven.
 
-# Credits
-
-Library is co-created and funded by [`λ-terms`](https://github.com/lambdaterms/)
 
 # Library status & important info
 
@@ -34,13 +31,6 @@ Raven-node will alert that breadcrumbs will not be registered as the library mod
 
 TODO
 
-## Tests
-
-There is a small suite of unit tests accompanying the library. You can run it with:
-```
-pulp test
-```
-
 ## Introduction
 
 Sentry is a popular error tracking platform that helps developers monitor and fix crashes in real-time.
@@ -63,7 +53,7 @@ main = do
 
 ### Events & breadcrumbs
 
-Apart from automatic reporting uncaught exceptions you can manually report exceptional and unexceptional program behaviour (events) with `captureException` and `captureMessage`, and record breadcrumbs with `recordBreadcrumb` and `recordBreadcrum'`. Breadcrumbs serve role of a trail of events that happened before the event and might help identifying a problem. After recording each event is sent to Sentry along with context and breadcrumb trail (see Sentry docs) present at given time.
+Apart from automatic reporting uncaught exceptions you can manually report exceptional and unexceptional program behaviour (events) with `captureException` and `captureMessage`, and record breadcrumbs with `recordBreadcrumb` and `recordBreadcrumb'`. Breadcrumbs serve role of a trail of events that happened before the event and might help identifying a problem. After recording each event is sent to Sentry along with context and breadcrumb trail (see Sentry docs) present at given time.
 
 ```purescript
 
@@ -128,11 +118,21 @@ main = do
               
 ```
 
+## Tests
 
-## Module documentation
+There is a small suite of unit tests accompanying the library. You can run it with:
+```
+pulp test
+```
+
+# Credits
+
+Library is co-created and funded by [`λ-terms`](https://github.com/lambdaterms/)
+
+# Module documentation
 
 Module documentation is [published on Pursuit](http://pursuit.purescript.org/packages/purescript-sentry-raven).
 
-## License & copyrights
+# License & copyrights
 
 See LICENSE file.
