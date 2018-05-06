@@ -29,7 +29,16 @@ Raven-node will alert that breadcrumbs will not be registered as the library mod
 
 ## Installation
 
-TODO
+Currently Node.js is only supported platform. To use the library make sure you have raven-node installed:
+```
+npm i raven
+```
+
+Then simply add the library as a dependency in your Purescript project:
+```
+bower install purescript-sentry-raven
+```
+
 
 ## Introduction
 
