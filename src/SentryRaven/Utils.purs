@@ -2,15 +2,15 @@ module Sentry.Raven.Utils where
 
 import Control.Bind ((>>=))
 import Control.Category ((>>>))
-import Control.Monad.Eff (Eff)
+import Effect (Effect)
 import Control.Monad.Except (runExcept)
 import Data.Either (either)
-import Data.Foreign (Foreign, F)
-import Data.Foreign.Index (readIndex, readProp)
+import Foreign (Foreign, F)
+import Foreign.Index (readIndex, readProp)
 import Data.Function (const)
 import Data.List (List(..))
 import Data.Maybe (Maybe(..))
-import Sentry.Raven.Core.Internal (RAVEN, Raven)
+import Sentry.Raven.Core.Internal (Raven)
 import Simple.JSON (class ReadForeign, read')
 
 -- | Case analysis for the 'Boolean' type
@@ -19,13 +19,13 @@ bool a b c = if c then b else a
 
 
 -- | Useful alias for explicit type annotations.
-type RavenFun0 eff ctx o = ∀ h. Raven h ctx → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun0 ctx o = ∀ h. Raven h ctx → Effect o
 
 -- | Useful alias for explicit type annotations.
-type RavenFun1 eff ctx i o = ∀ h. Raven h ctx → i → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun1 ctx i o = ∀ h. Raven h ctx → i → Effect o
 
 -- | Useful alias for explicit type annotations.
-type RavenFun2 eff ctx i0 i1 o = ∀ h. Raven h ctx → i0 → i1 → Eff (raven ∷ RAVEN h | eff) o
+type RavenFun2 ctx i0 i1 o = ∀ h. Raven h ctx → i0 → i1 → Effect o
 
 -- | Represents path in a foreign object
 data RIx = IxP String | IxI Int

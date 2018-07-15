@@ -27,14 +27,14 @@
     "tests"
   ],
   "dependencies": {
-    "purescript-prelude": "^3.3.0",
-    "purescript-simple-json": "^3.0.0",
-    "purescript-test-unit": "^13.0.0",
-    "purescript-functions": "^3.0.0"
+    "purescript-prelude": "^4.0.0",
+    "purescript-simple-json": "^4.0.0",
+    "purescript-test-unit": "^14.0.0",
+    "purescript-functions": "^4.0.0"
   },
   "devdependencies": {
     "purescript-node-process": "^5.0.0",
-    "purescript-console": "^3.0.0",
-    "purescript-aff": "^4.1.1"
+    "purescript-console": "^4.1.0",
+    "purescript-aff": "^5.0.1"
   }
 }

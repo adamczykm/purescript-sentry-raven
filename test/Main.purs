@@ -3,12 +3,10 @@ module Test.Main where
 import Control.Alternative ((<|>))
 import Control.Applicative (pure, (*>))
 import Control.Bind (bind)
-import Control.Category (id, (<<<), (>>>))
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE)
+import Control.Category (identity, (<<<), (>>>))
+import Effect (Effect)
 import Data.Eq (class Eq, (==))
-import Data.Foreign (Foreign)
+import Foreign (Foreign)
 import Data.HeytingAlgebra (not, (&&))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..), maybe)
@@ -19,18 +17,11 @@ import Simple.JSON (class ReadForeign, class WriteForeign)
 import Test.TestUtils (testRaven)
 import Test.Unit (suite, test)
 import Test.Unit.Assert as Assert
-import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 import Type.Data.Boolean (kind Boolean)
 
 
-main ∷ ∀ eff. Eff
-  ( console ∷ CONSOLE
-  , testOutput ∷ TESTOUTPUT
-  , avar ∷ AVAR
-  | eff
-  )
-  Unit
+main ∷ Effect Unit
 main = runTest do
   suite "Capturing events" do
 
@@ -76,13 +67,13 @@ main = runTest do
         captureMessage r "testMsg" {})
 
     test "getContext works as expected" $ do
-      ret ← testRaven {user : userCtx} (Just id) (const true)
+      ret ← testRaven {user : userCtx} (Just identity) (const true)
               (\r → do
                 ctx ← getContext r
                 pure $ ctx.user == userCtx)
       Assert.assert "user context works" ret
 
-      ret' ← testRaven {custom : userCtx} (Just id) (const true)
+      ret' ← testRaven {custom : userCtx} (Just identity) (const true)
               (\r → do
                 ctx ← getContext r
                 pure $ ctx.custom == userCtx)
@@ -108,7 +99,7 @@ main = runTest do
           pure $ tagVal == tagV
 
     testAssert "Tags adding works as expected" $
-      testRaven {tags:{}} (Just id) (const true)
+      testRaven {tags:{}} (Just identity) (const true)
       (\r → withAddedTags r {tagKey: "tagValue"} (\rt → do
         captureMessage rt "testMsg" {}
         ctx ← getContext rt
@@ -118,7 +109,7 @@ main = runTest do
   suite "Droppping breadcrumbs" do
 
     let noBreadcrumbs = Just ([] ∷ Array (Breadcrumb' String))
-        testbrdc = breadcrumb' "test" id
+        testbrdc = breadcrumb' "test" identity
         getBreadcrumbs ∷ ∀ a. ReadForeign a ⇒ Maybe Foreign → Maybe a
         getBreadcrumbs me = do
           e ← me

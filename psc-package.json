@@ -1,6 +1,6 @@
 {
   "name": "purescript-sentry-raven",
-  "set": "psc-0.11.7",
+  "set": "psc-0.12.0",
   "source": "https://github.com/purescript/package-sets.git",
   "depends": [
     "test-unit",
@@ -9,7 +9,7 @@
     "node-process",
     "console",
     "debug",
-    "eff",
+    "effect",
     "prelude",
     "psci-support"
   ]

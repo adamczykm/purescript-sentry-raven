@@ -1,23 +1,22 @@
 module Example.SimpleUsage where
 
-import Prelude (class Eq, Unit, bind, const, discard, id, map, pure, unit, ($), (<$>), (<<<), (<>), (==), (>>=))
+import Prelude (class Eq, Unit, bind, const, discard, identity, map, pure, unit, ($), (<$>), (<<<), (<>), (==), (>>=))
 
-import Control.Monad.Aff (Aff, launchAff_)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff, kind Effect)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE, log)
-import Data.Foreign (Foreign)
+import Effect.Aff (Aff, launchAff_)
+import Effect (Effect)
+import Effect.Class (liftEffect)
+import Effect.Console (log)
+import Foreign (Foreign)
 import Data.List (List(..), (:))
 import Data.Maybe (maybe, Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
-import Debug.Trace (traceAnyA)
-import Node.Process (PROCESS, lookupEnv)
+-- import Debug.Trace (traceAnyA)
+-- import Node.Process (lookupEnv)
 import Simple.JSON (class ReadForeign, class WriteForeign, write, writeImpl)
 
-import Sentry.Raven (Dsn(..), RAVEN, RIx(..), Raven, RavenFun1, captureMessage, getContext, parseForeignNested', withAddedExtraContext, withAddedTags, withRaven, withUser)
+import Sentry.Raven (Dsn(..), RIx(..), Raven, RavenFun1, captureMessage, getContext, parseForeignNested', withAddedExtraContext, withAddedTags, withRaven, withUser)
 import Sentry.Raven.Breadcrumb
-import Sentry.Raven.Test (requestOutputTest)
+-- import Sentry.Raven.Test (requestOutputTest)
 
 
 ---------------------- EXAMPLE & MAIN --------------------------------
@@ -33,13 +32,13 @@ instance writeForeignCategoryInst ∷ WriteForeign Category where
   writeImpl UI = writeImpl "UI"
 
 
-main ∷ ∀ e. Eff (process ∷ PROCESS, avar ∷ AVAR, console ∷ CONSOLE | e) Unit
+main ∷ ∀ e. Effect Unit
 main = launchAff_ do
 
   -- -------------- test
 
   -- let brdcrmb = breadcrumb Test ( _ {message = d "st brdcrmb", type = d Http, level = d Info, data=d (write {url: "http://example.com/api/1.0/users", method:"GET", status_code:200, reason:"OK"})} )
-  let brdcrmb = breadcrumb Test ( _ {message = d "st brdcrmb", type = d Navigation, level = d Info, data=d (write {from: "/from", to:"/to"})} )
+  let brdcrmb = breadcrumb Test ( _ {message = j "st brdcrmb", type = j Navigation, level = j Info, data=j (write {from: "/from", to:"/to"})} )
   _ ← printTestSimple "test1" $ test {} (maybe true (const false)) (\rt → do
         recordBreadcrumb' rt brdcrmb
                                                                    )
@@ -52,8 +51,8 @@ main = launchAff_ do
         ctx ← getContext rt
         traceAnyA ctx )
 
-  _ ← liftEff (do
-      dsn ← (Dsn <<< maybe "" id) <$> lookupEnv "SENTRY_DSN"
+  _ ← liftEffect (do
+      dsn ← (Dsn <<< maybe "" identity) <$> lookupEnv "SENTRY_DSN"
 
       ret ← withRaven dsn {} { user : {id : 1}, tags : {}, extra : {a:1} } ( \r'' →
         withAddedTags r'' {tag1 : 1, tag2 : "2"} (\r' → do
@@ -71,20 +70,21 @@ main = launchAff_ do
   pure unit
 
   where
+    j ∷ ∀ a. a → Maybe a
     j = Just
 
-    printTestSimple name res = map (bool ("Test " <> name <> " has failed!") ("Test " <> name <> " Ok!")) res >>= (liftEff <<< log)
+    printTestSimple name res = map (bool ("Test " <> name <> " has failed!") ("Test " <> name <> " Ok!")) res >>= (liftEffect <<< log)
 
-    test ∷ ∀ eff ctx a
+    test ∷ ∀ ctx a
          . WriteForeign ctx
          ⇒ ReadForeign ctx
          ⇒ ctx
          → (Maybe Foreign → Boolean)
-         → (∀ h. Raven h ctx → Eff (avar ∷ AVAR, raven ∷ RAVEN h | eff) a)
-         → Aff (avar ∷ AVAR | eff) Boolean
+         → (∀ h. Raven h ctx → Effect a)
+         → Aff Boolean
     test ctx validate action = requestOutputTest (Dsn "") {} ctx (Milliseconds 1500.0) (const true) validate action
 
-    traceContext ∷ ∀ ctx eff. ReadForeign ctx ⇒ RavenFun1 (console ∷ CONSOLE | eff) ctx String Unit
+    traceContext ∷ ∀ ctx eff. ReadForeign ctx ⇒ RavenFun1 ctx String Unit
     traceContext r name = (do
       ctx ← getContext r
       traceAnyA name

@@ -1,3 +1,7 @@
+* 0.2.0
+
+Migration to Purescript version 0.12.
+Updated dependencies
 
 * 0.1.2
 

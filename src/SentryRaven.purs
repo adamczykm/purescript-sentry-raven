@@ -21,7 +21,7 @@ import Sentry.Raven.Utils (
 
 import Sentry.Raven.Core (
   -- Internal reexport
-  Raven, RAVEN,
+  Raven,
   -- Raven context & lib initialization
   Dsn(..), withRaven,
   -- Event recording

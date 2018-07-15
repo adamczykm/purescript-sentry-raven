@@ -1,12 +1,12 @@
 module Sentry.Raven.Breadcrumb where
 
 import Control.Category ((>>>))
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Uncurried (runEffFn2)
+import Effect (Effect)
+import Effect.Uncurried (runEffectFn2)
 import Control.Monad.Except (except, runExcept)
 import Data.Either (Either(..))
 import Data.Eq (class Eq, (==))
-import Data.Foreign (ForeignError(ForeignError), readString)
+import Foreign (ForeignError(ForeignError), readString)
 import Data.Function (const, ($))
 import Data.Functor (map)
 import Data.HeytingAlgebra ((&&))
@@ -16,7 +16,7 @@ import Data.Ord (class Ord, Ordering(..))
 import Data.Semigroup ((<>))
 import Data.Show (class Show)
 import Data.Unit (Unit)
-import Sentry.Raven.Core.Internal (RAVEN, Raven, recordBreadcrumbImpl)
+import Sentry.Raven.Core.Internal (Raven, recordBreadcrumbImpl)
 import Simple.JSON (class ReadForeign, class WriteForeign, readImpl, write, writeImpl)
 
 
@@ -155,10 +155,10 @@ breadcrumb' cat mod = Breadcrumb $ mod {
 -- | You may also want to use 'recordBreadcrumb' from 'Sentry.Raven.Core' for
 -- | non-restricted version of this function.
 recordBreadcrumb' ∷
-  ∀ h ctx eff a d
+  ∀ h ctx a d
   . WriteForeign a
   ⇒ WriteForeign d
   ⇒ Raven h ctx
   → Breadcrumb a d
-  → Eff (raven ∷ RAVEN h | eff) Unit
-recordBreadcrumb' r bc = runEffFn2 recordBreadcrumbImpl r (write bc)
+  → Effect Unit
+recordBreadcrumb' r bc = runEffectFn2 recordBreadcrumbImpl r (write bc)
