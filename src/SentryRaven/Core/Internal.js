@@ -1,6 +1,6 @@
 "use strict";
 
-var Raven = require('raven');
+var Raven = require('raven-js');
 
 exports.setContextHelper = function(raven, ctx){
     var ctx_cpy = ctx == null ? {} : JSON.parse(JSON.stringify(ctx));
