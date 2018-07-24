@@ -5,7 +5,9 @@ var Raven = require('raven-js');
 exports.setContextHelper = function(raven, ctx){
     var ctx_cpy = ctx == null ? {} : JSON.parse(JSON.stringify(ctx));
     var brdc = raven.getContext().breadcrumbs;
-    raven.setContext(ctx_cpy);
+    raven.setUserContext(ctx_cpy.user);
+    raven.setTagsContext(ctx_cpy.tags);
+    raven.setExtraContext(ctx_cpy.extra);
     ctx_cpy.breadcrumbs = brdc;
     return ctx_cpy;
 };
