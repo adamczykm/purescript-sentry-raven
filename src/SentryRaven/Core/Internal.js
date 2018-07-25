@@ -14,6 +14,7 @@ exports.setContextHelper = function(raven, ctx){
 
 exports.withRavenImpl = function(dsn, options, ctx, act) {
     var raven = new Raven.Client(dsn, options);
+    raven.config(dsn, options);
     var ctx_cpy = exports.setContextHelper(raven,ctx);
     return raven.context(ctx_cpy, function(){
         return act(raven)();
