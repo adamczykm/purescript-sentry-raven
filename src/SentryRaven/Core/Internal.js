@@ -71,5 +71,5 @@ exports.recordBreadcrumbImpl = function(raven, breadcrumb) {
     if (currCtx.breadcrumbs.length > raven.maxBreadcrumbs) {
         currCtx.breadcrumbs.shift();
     }
-    raven.setContext(currCtx);
+    exports.setContextHelper(raven, currCtx);
 };
