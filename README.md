@@ -59,6 +59,23 @@ main = do
     )
               
 ```
+  
+Notice, that because of use of ST-like regions to restrict the scope of underlying javascript raven instance, code using ($) operator would not work, i.e.:
+
+this works:
+
+```purescript
+ret ← withRaven dsn {} {} ( \r → do
+  ... -- application code
+  )
+```
+
+but this doesn't:
+
+```purescript
+ret ← withRaven dsn {} {} $ \r → do
+  ... -- application code
+```
 
 ### Events & breadcrumbs
 
